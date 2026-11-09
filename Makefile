@@ -4,7 +4,6 @@ ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. Try installing devkitARM.")
 endif
 
-include $(DEVKITPRO)/libctru/default_config
 include $(DEVKITARM)/3ds_rules
 
 TARGET      := fish-night
