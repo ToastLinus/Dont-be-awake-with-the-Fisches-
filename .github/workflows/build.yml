@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+      - name: Install Nintendo 3DS libraries
+        run: pacman -Syu --noconfirm 3ds-dev
       - name: Build 3DSX
         run: make
       - name: Upload homebrew artifact
