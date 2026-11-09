@@ -36,6 +36,7 @@ static Scene scene = SCENE_BOAT;
 static float player_x = 200.0f;
 static float player_y = 150.0f;
 static int event_timer = 0;
+static int frame_counter = 0;
 static C2D_TextBuf text_buffer;
 static C3D_RenderTarget *top_target;
 static C3D_RenderTarget *bottom_target;
@@ -72,12 +73,13 @@ static void init_game(void) {
 }
 
 static void update_needs(void) {
+    /* One in-game minute per second at 60 FPS, not once per rendered frame. */
     game.minutes++;
     if (game.minutes % 18 == 0 && game.hunger > 0) game.hunger--;
     if (game.minutes % 13 == 0 && game.thirst > 0) game.thirst--;
     if (game.minutes % 22 == 0 && game.fatigue < 100) game.fatigue++;
-    if (game.hunger < 25 || game.thirst < 25) game.fear++;
-    if (game.fear > 100) game.fear = 100;
+    if (game.minutes % 5 == 0 && (game.hunger < 25 || game.thirst < 25) && game.fear < 100)
+        game.fear++;
 }
 
 static void interact(void) {
@@ -229,7 +231,10 @@ int main(int argc, char **argv) {
             game.event_active = false;
             set_message("Es ist still. Du bist wieder allein.");
         }
-        update_needs();
+        if (++frame_counter >= 60) {
+            frame_counter = 0;
+            update_needs();
+        }
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         C2D_SceneBegin(top_target);
