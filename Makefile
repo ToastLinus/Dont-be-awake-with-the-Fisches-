@@ -1,11 +1,10 @@
-#---------------------------------------------------------------------------------
+# Nintendo 3DS homebrew Makefile
 .SUFFIXES:
-#---------------------------------------------------------------------------------
-
 ifeq ($(strip $(DEVKITARM)),)
 $(error "Please set DEVKITARM in your environment. Try installing devkitARM.")
 endif
 
+include $(DEVKITPRO)/libctru/default_config
 include $(DEVKITARM)/3ds_rules
 
 TARGET      := fish-night
@@ -16,17 +15,15 @@ INCLUDES    := include
 GRAPHICS    :=
 
 ARCH        := -march=armv6k -mtune=mpcore -mfloat-abi=hard
-
-CFLAGS      := -g -Wall -O2 -mword-relocations -ffunction-sections $(ARCH) $(INCLUDE) -D__3DS__
-CXXFLAGS    := $(CFLAGS) -fno-rtti -fno-exceptions
+CFLAGS      = -g -Wall -Wextra -O2 -mword-relocations -ffunction-sections $(ARCH) $(INCLUDE) -D__3DS__
+CXXFLAGS    = $(CFLAGS) -fno-rtti -fno-exceptions
 ASFLAGS     := -g $(ARCH)
 LDFLAGS     := -specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS        := -lcitro2d -lcitro3d -lctru -lm
-LIBDIRS     := $(DEVKITPRO)/libctru/lib $(DEVKITPRO)/citro3d/lib $(DEVKITPRO)/citro2d/lib
+LIBDIRS     := $(DEVKITPRO)/libctru $(DEVKITPRO)/portlibs/3ds
 
 ifneq ($(BUILD),$(notdir $(CURDIR)))
-#---------------------------------------------------------------------------------
 export OUTPUT := $(CURDIR)/$(TARGET)
 export VPATH  := $(foreach dir,$(SOURCES),$(CURDIR)/$(dir)) $(foreach dir,$(GRAPHICS),$(CURDIR)/$(dir))
 export DEPSDIR := $(CURDIR)/$(BUILD)
