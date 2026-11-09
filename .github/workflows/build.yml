@@ -13,18 +13,8 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
-      - name: Build and install libctru
-        run: |
-          git clone --depth=1 https://github.com/devkitPro/libctru.git /tmp/libctru
-          make -C /tmp/libctru install
-      - name: Build and install citro3d
-        run: |
-          git clone --depth=1 https://github.com/devkitPro/citro3d.git /tmp/citro3d
-          make -C /tmp/citro3d install
-      - name: Build and install citro2d
-        run: |
-          git clone --depth=1 https://github.com/devkitPro/citro2d.git /tmp/citro2d
-          make -C /tmp/citro2d install
+      - name: Install Nintendo 3DS libraries
+        run: dkp-pacman -Syyu --noconfirm 3ds-dev citro2d
       - name: Build 3DSX
         run: make
       - name: Upload homebrew artifact
