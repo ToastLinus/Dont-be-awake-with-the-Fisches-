@@ -37,7 +37,8 @@ static float player_x = 200.0f;
 static float player_y = 150.0f;
 static int event_timer = 0;
 static C2D_TextBuf text_buffer;
-static C2D_Text text_cache[8];
+static C3D_RenderTarget *top_target;
+static C3D_RenderTarget *bottom_target;
 
 static u32 color(u8 r, u8 g, u8 b, u8 a) {
     return C2D_Color32(r, g, b, a);
@@ -161,7 +162,7 @@ static void draw_deck_scene(void) {
 }
 
 static void draw_bottom_screen(void) {
-    C2D_SceneBegin(GFX_BOTTOM);
+    C2D_SceneBegin(bottom_target);
     C2D_DrawRectSolid(0, 0, 0.1f, BOTTOM_W, BOTTOM_H, color(12, 17, 24, 255));
     draw_text(12, 10, 0.55f, color(226, 225, 213, 255), "JACKSTONE - STATUS");
     draw_text(12, 37, 0.42f, color(185, 197, 203, 255), "HUNGER");
@@ -186,6 +187,8 @@ int main(int argc, char **argv) {
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
     C2D_Prepare();
+    top_target = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+    bottom_target = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
     text_buffer = C2D_TextBufNew(4096);
     srand((unsigned int)osGetTime());
     init_game();
@@ -229,7 +232,7 @@ int main(int argc, char **argv) {
         update_needs();
 
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-        C2D_SceneBegin(GFX_TOP);
+        C2D_SceneBegin(top_target);
         if (scene == SCENE_BOAT || scene == SCENE_SLEEP) draw_boat_scene();
         else draw_deck_scene();
         if (scene == SCENE_EVENT) {
