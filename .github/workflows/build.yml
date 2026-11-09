@@ -1,0 +1,23 @@
+name: Build Nintendo 3DS homebrew
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkitarm:latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+      - name: Build 3DSX
+        run: make
+      - name: Upload homebrew artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: fish-night-3dsx
+          path: fish-night.3dsx
+          if-no-files-found: error
