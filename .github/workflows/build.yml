@@ -2,8 +2,12 @@ name: Build Nintendo 3DS homebrew
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -77,3 +81,16 @@ jobs:
             fish-night.cia
             fish-night.smdh
           if-no-files-found: error
+
+      - name: Publish latest CIA release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Fish Night – Latest CIA
+          body: |
+            Aktuelle installierbare CIA für Nintendo 3DS.
+            Dieser Release wird bei jedem erfolgreichen Build aktualisiert; es bleibt nur die neueste CIA erhalten.
+          files: fish-night.cia
+          overwrite_files: true
+          fail_on_unmatched_files: true
