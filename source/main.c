@@ -182,6 +182,7 @@ static void draw_item(Loot *it){
  C2D_DrawCircleSolid(it->x,it->y,2.2f,2.2f,c);
 }
 static void draw_top(void){
+ C2D_SceneBegin(top);
  draw_sky();draw_boat();
  for(int i=0;i<ITEMS;i++)draw_item(&loot[i]);
  draw_player();
@@ -243,7 +244,7 @@ int main(int argc,char **argv){
   }
   C2D_TextBufClear(textbuf);
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-  C2D_SceneBegin(top);draw_top();draw_bottom();
+  draw_top();draw_bottom();
   C3D_FrameEnd(0);
  }
  C2D_TextBufDelete(textbuf);C2D_Fini();C3D_Fini();gfxExit();return 0;
