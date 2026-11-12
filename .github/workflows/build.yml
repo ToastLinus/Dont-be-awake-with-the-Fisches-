@@ -85,7 +85,7 @@ jobs:
           if-no-files-found: error
 
       - name: Remove older CIA assets from latest release
-        if: github.ref == 'refs/heads/main'
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ship-survival-rebuild') && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -95,7 +95,7 @@ jobs:
           done
 
       - name: Publish latest CIA release
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ship-survival-rebuild') && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
