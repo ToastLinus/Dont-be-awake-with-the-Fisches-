@@ -1,29 +1,29 @@
 # Don't Be Awake with the Fisches
 
-An original Nintendo 3DS survival-horror adventure inspired by the project's stated gameplay goals. This repository contains original code and original placeholder/procedural visuals; it does not include proprietary source code or extracted assets from another game.
+An original Nintendo 3DS survival-horror prototype about Jackstone, an isolated boat, and an ocean that never feels safe.
 
-## Target
+## Current gameplay
 
-- Nintendo 3DS / 3DS XL with custom firmware
-- C and devkitARM + libctru + citro2d
-- Dual-screen interface: exploration on the top screen, status and inventory on the bottom screen
+- **60-second preparation phase:** explore the deck and collect supplies before the first night.
+- **Survival systems:** hunger, thirst, fatigue, fear, food, water, wood, signal flares, a key and a lantern.
+- **Night events:** nine different atmospheric events, including strange knocks, distant lights, heavy fog, a storm and unexplained movement under the boat.
+- **Dual-screen layout:** the top screen renders the animated boat scene; the lower screen displays status, supplies and controls.
+- **Animation:** moving water, drifting highlights, a flickering lantern and a bobbing player character.
+- **Restart:** after a run ends, press START to begin a new 60-second preparation phase.
 
-## Planned gameplay
+## Controls
 
-- Jackstone begins aboard an isolated boat
-- Explore, collect useful supplies, and manage hunger, thirst, and fatigue
-- Decide when to sleep; nights can pass quietly or trigger unpredictable events
-- Investigate strange sounds and ocean creatures
-- Inventory, story events, and multiple outcomes
+- Circle Pad / D-pad: move around the deck
+- A: collect a nearby item
+- Y: eat, drink or use a signal flare
+- X: rest briefly
+- B: show a short deck hint
+- START: leave the current run; after an ending, START restarts
 
 ## Build
 
-The GitHub Actions workflow builds a 3DSX homebrew artifact using the official devkitPro devkitARM container. CIA packaging will be added after the initial build is verified and the title metadata/assets are finalized.
+The GitHub Actions workflow installs the devkitPro 3DS toolchain, builds the 3DSX/ELF, creates original icon and banner art, and attempts to package an installable CIA with bannertool and makerom. The workflow uploads the build artifacts when every step succeeds.
 
-## Controls (initial prototype)
+## Important
 
-- D-pad: move
-- A: interact / collect
-- B: wait / close a prompt
-- X: sleep when near the bed
-- START: pause
+This is an actively developed homebrew project. A successful CI run and a real-device test are required before calling a build finished. Visuals are currently drawn procedurally in C; detailed hand-painted backgrounds, audio, save data and a larger story are future development work.
