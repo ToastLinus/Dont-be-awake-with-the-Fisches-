@@ -71,6 +71,8 @@ jobs:
           "$BANNERTOOL" makebanner -i banner.png -a silence.wav -o fish-night.bnr
           "$MAKEROM" -f cia -o fish-night.cia -elf fish-night.elf -rsf fish-night.rsf -icon fish-night.smdh -banner fish-night.bnr -desc app:4 -target t -exefslogo -major 1 -minor 0 -micro 0
           test -s fish-night.cia
+          mv fish-night.cia Dont-be-awake-with-the-Fisches-.cia
+          test -s Dont-be-awake-with-the-Fisches-.cia
 
       - name: Upload Nintendo 3DS builds
         uses: actions/upload-artifact@v4
@@ -78,9 +80,15 @@ jobs:
           name: dont-be-awake-with-the-fisches-3ds
           path: |
             fish-night.3dsx
-            fish-night.cia
+            Dont-be-awake-with-the-Fisches-.cia
             fish-night.smdh
           if-no-files-found: error
+
+      - name: Remove previous differently named CIA asset
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release delete-asset latest fish-night.cia --yes || true
 
       - name: Publish latest CIA release
         if: github.event_name != 'pull_request'
@@ -91,6 +99,6 @@ jobs:
           body: |
             Aktuelle installierbare CIA für Nintendo 3DS.
             Dieser Release wird bei jedem erfolgreichen Build aktualisiert; es bleibt nur die neueste CIA erhalten.
-          files: fish-night.cia
+          files: Dont-be-awake-with-the-Fisches-.cia
           overwrite_files: true
           fail_on_unmatched_files: true
