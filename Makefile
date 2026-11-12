@@ -39,7 +39,7 @@ export OFILES := $(OFILES_BIN) $(OFILES_SRC)
 export HFILES := $(addsuffix .h,$(subst .,_,$(BINFILES)))
 
 export INCLUDE := $(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
-                  $(foreach dir,$(LIBDIRS),-I$(dir)/include) \
+                  -I$(DEVKITPRO)/libctru/include -I$(DEVKITPRO)/portlibs/3ds/include \
                   -I$(CURDIR)/$(BUILD)
 
 .PHONY: all clean
