@@ -1,30 +1,31 @@
 # Don't Be Awake with the Fisches
 
-An original 2D survival adventure for Nintendo 3DS. Explore a small boat, manage supplies, and discover what happens when you sleep on the open sea.
+A first-person survival adventure for Nintendo 3DS.
 
-## Current version
+## Game flow
 
-- Main menu and difficulty selection: Easy, Normal and Hard.
-- Captain selection with four names and three outfit styles.
-- Four connected boat areas: outer deck, kitchen, upper-deck garden and bedroom.
-- Walk around each room with the D-pad; the D-pad no longer changes rooms.
-- Use the lower touchscreen room buttons to switch between rooms.
-- Approach the highlighted room object and press A to interact.
-- Fishing, cooking fish from the visible basket, gardening, rainwater collection and sleeping.
-- Survival systems: hunger, thirst, energy and health.
-- Gentle synthesized ocean ambience loops in the background.
-- The lower screen displays stats, supplies and control hints.
+1. You begin aboard a large ship.
+2. Explore its deck, storage area and bridge from a first-person viewpoint.
+3. Collect food, drinking water, a rope and a compass. You do not start with these supplies.
+4. Return to the bow and transfer to the small sailboat.
+5. Survive at sea by fishing, managing food and water, and resting through the nights.
 
 ## Controls
 
-- **D-pad:** walk around the current room.
-- **A:** use the highlighted object when standing close to it.
-- **B:** drink stored water.
-- **X:** sleep when standing beside the bed.
-- **Touchscreen:** switch between deck, kitchen, garden and bedroom.
+### On the large ship
+- **Left / Right:** move between the ship's areas.
+- **Up / Down:** move to the bridge / return to the bow.
+- **A:** collect the item in the current area. At the bow, board the small sailboat once all four items have been collected.
+- **Touchscreen:** interact with the highlighted prompt.
 
-To cook a caught fish, open the kitchen with its touchscreen button, walk to the stove, and press **A**. The fish is taken from the basket automatically and cooked.
+### On the small sailboat
+- **A:** try fishing.
+- **B:** use food or water from your supplies.
+- **X:** sleep and advance to the next day.
+- **A:** continue after the night screen.
+
+The top screen uses a first-person scene: there is no visible third-person player character. The large ship is only the opening area; the small sailboat is the survival setting.
 
 ## Build and testing
 
-GitHub Actions builds the 3DSX and installable CIA with devkitPro. A successful workflow confirms compilation and packaging only; the CIA still needs to be tested on a real Nintendo 3DS.
+GitHub Actions builds the 3DSX and installable CIA with devkitPro. A successful workflow confirms compilation and packaging only. The CIA still needs to be tested on a real Nintendo 3DS.
