@@ -84,11 +84,15 @@ jobs:
             fish-night.smdh
           if-no-files-found: error
 
-      - name: Remove previous differently named CIA asset
+      - name: Remove older CIA assets from latest release
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release delete-asset latest fish-night.cia --yes || true
+        run: |
+          RELEASE_ID=$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/latest" --jq '.id')
+          gh api "repos/$GITHUB_REPOSITORY/releases/$RELEASE_ID/assets" --jq '.[] | select(.name != "Dont-be-awake-with-the-Fisches-.cia") | select(.name | endswith(".cia")) | .id' | while read ASSET_ID; do
+            gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$ASSET_ID"
+          done
 
       - name: Publish latest CIA release
         if: github.event_name != 'pull_request'
