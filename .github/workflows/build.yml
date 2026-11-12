@@ -84,6 +84,26 @@ jobs:
             fish-night.smdh
           if-no-files-found: error
 
+      - name: Remove older CIA assets from latest release
+        if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ship-survival-rebuild') && github.event_name != 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: release } = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag: 'latest'
+            });
+            for (const asset of release.assets) {
+              if (asset.name.endsWith('.cia') && asset.name !== 'Dont-be-awake-with-the-Fisches-.cia') {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: asset.id
+                });
+              }
+            }
+
       - name: Publish latest CIA release
         if: (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/ship-survival-rebuild') && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
