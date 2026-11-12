@@ -79,7 +79,9 @@ static void say(const char *s){ snprintf(g.message,sizeof(g.message),"%s",s); }
 static int clampi(int v,int lo,int hi){ return v<lo?lo:(v>hi?hi:v); }
 
 static void reset_game(void){
+    Difficulty selectedDifficulty=g.difficulty;
     memset(&g,0,sizeof(g));
+    g.difficulty=selectedDifficulty;
     g.day=1; g.hunger=85; g.thirst=85; g.energy=90; g.health=100; g.fear=5;
     g.meals=2; g.water=2; g.seeds=2; g.wood=2; g.bait=2;
     g.hasLantern=true; g.room=ROOM_DECK; g.firstRun=true;
@@ -211,6 +213,15 @@ static void draw_boat(void){
     circle(112,118,1.9f,2,C(255,239,177,255));
     circle(148,118,1.9f,2,C(255,239,177,255));
 }
+static void draw_captain(float x,float y){
+    u32 coat= g.character==1 ? C(76,116,139,255) : (g.character==2 ? C(91,111,76,255) : C(61,78,91,255));
+    circle(x,y+15,2.0f,7,C(0,0,0,85));
+    rect(x-6,y-7,2.1f,12,18,coat);
+    circle(x,y-13,2.2f,6,C(218,177,139,255));
+    rect(x-7,y-20,2.3f,14,5,C(45,43,39,255));
+    rect(x-5,y+10,2.2f,4,9,C(41,43,49,255));
+    rect(x+2,y+10,2.2f,4,9,C(41,43,49,255));
+}
 static void draw_room_scene(void){
     draw_sea();
     if(g.room==ROOM_DECK){
@@ -221,6 +232,7 @@ static void draw_room_scene(void){
         rect(287,91,1.8f,36,2,C(197,171,126,255));
         circle(310,177,1.8f,12,C(48,91,99,255));
         circle(310,177,1.9f,8,C(18,49,61,255));
+        draw_captain(205,157);
         text(20,211,0.48f,C(244,223,186,255),"Angeln und Vorrate sammeln");
     }else if(g.room==ROOM_KITCHEN){
         rect(0,0,0.8f,TOP_W,240,C(32,47,55,255));
@@ -236,6 +248,7 @@ static void draw_room_scene(void){
         circle(95,62,1.5f,6,C(255,191,98,255));
         circle(111,62,1.5f,6,C(255,191,98,255));
         text(18,12,0.65f,C(255,239,205,255),"KUECHE");
+        draw_captain(185,160);
         text(24,211,0.48f,C(244,223,186,255),"Fisch, Pflanzen oder Konserven essen");
     }else if(g.room==ROOM_ROOF){
         rect(0,0,0.8f,TOP_W,240,C(16,51,65,255));
@@ -255,6 +268,7 @@ static void draw_room_scene(void){
             }
         }
         text(18,12,0.65f,C(255,239,205,255),"OBERDECK-GARTEN");
+        draw_captain(206,165);
         text(24,211,0.48f,C(244,223,186,255),"Regen sammeln und Pflanzen anbauen");
     }else{
         rect(0,0,0.8f,TOP_W,240,C(27,35,48,255));
@@ -269,6 +283,7 @@ static void draw_room_scene(void){
         circle(329,62,1.5f,12,C(255,193,108,70));
         circle(329,62,1.6f,5,C(255,204,120,255));
         text(18,12,0.65f,C(255,239,205,255),"SCHLAFZIMMER");
+        draw_captain(183,166);
         text(24,211,0.48f,C(244,223,186,255),"Ausruhen und den Tag ueberspringen");
     }
 }
@@ -321,6 +336,11 @@ static void statbar(float x,float y,const char *label,int v,u32 fill){
     rect(x+83,y+2,1.0f,112,8,C(37,48,56,255));
     rect(x+85,y+4,1.1f,108.0f*v/100.0f,4,fill);
 }
+static void small_room_button(float x,const char *label,bool selected){
+    rect(x,202,1.0f,72,25,C(0,0,0,100));
+    rect(x,200,1.1f,72,25,selected?C(53,119,124,255):C(34,57,70,255));
+    text(x+5,207,0.39f,C(250,242,220,255),label);
+}
 static void draw_bottom(void){
     C2D_TargetClear(bottomTarget,C(9,18,28,255));
     C2D_SceneBegin(bottomTarget);
@@ -355,9 +375,11 @@ static void draw_bottom(void){
         text(18,128,0.48f,C(255,224,176,255),"VORRAETE");
         snprintf(b,sizeof(b),"Fisch %d  Essen %d  Wasser %d",g.fish,g.meals,g.water);text(18,147,0.43f,C(218,226,219,255),b);
         snprintf(b,sizeof(b),"Samen %d  Ernte %d  Regen %d",g.seeds,g.crops,g.rain);text(18,164,0.43f,C(218,226,219,255),b);
-        text(18,184,0.42f,C(184,207,207,255),roomNames[g.room]);
-        button(18,202,137,25,"ZURUECK ◀",false);
-        button(165,202,137,25,"AKTION  A",true);
+        text(18,183,0.42f,C(184,207,207,255),g.message);
+        small_room_button(8,"DECK",g.room==ROOM_DECK);
+        small_room_button(86,"KUECHE",g.room==ROOM_KITCHEN);
+        small_room_button(164,"GARTEN",g.room==ROOM_ROOF);
+        small_room_button(242,"BETT",g.room==ROOM_BEDROOM);
     }else if(screen==SCREEN_EVENT){
         panel(10,15,300,210);
         text(28,30,0.62f,C(255,232,187,255),"DIE NACHT");
@@ -420,10 +442,10 @@ int main(int argc,char **argv){
             if(down&KEY_A)interact();
             if(down&KEY_B)do_drink();
             if(tapped){
-                if(touch_in(touch,18,202,137,25))change_room(-1);
-                else if(touch_in(touch,165,202,137,25))interact();
-                else if(touch_in(touch,0,0,160,190))change_room(-1);
-                else if(touch_in(touch,160,0,160,190))change_room(1);
+                if(touch_in(touch,8,200,72,27))g.room=ROOM_DECK;
+                else if(touch_in(touch,86,200,72,27))g.room=ROOM_KITCHEN;
+                else if(touch_in(touch,164,200,72,27))g.room=ROOM_ROOF;
+                else if(touch_in(touch,242,200,72,27))g.room=ROOM_BEDROOM;
             }
             if(down&KEY_X){if(g.room==ROOM_BEDROOM)do_sleep();else say("Zum Schlafen ins Schlafzimmer gehen.");}
             if((frameNo%180)==0)update_stats();
