@@ -95,7 +95,7 @@ jobs:
           done
 
       - name: Publish latest CIA release
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
