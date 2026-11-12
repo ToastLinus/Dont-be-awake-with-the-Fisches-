@@ -248,7 +248,10 @@ static void move_player(u32 down){
 static void interact(void){
     if(screen!=SCREEN_GAME)return;
     if(!near_room_target()){
-        say(g.room==ROOM_DECK?"GEH ZUM ANGELPLATZ UND DRUECKE A.":(g.room==ROOM_KITCHEN?"GEH ZUM HERD UND DRUECKE A.":(g.room==ROOM_ROOF?"GEH ZU DEN PFLANZEN UND DRUECKE A.":"GEH ZUM BETT UND DRUECKE A."));
+        if(g.room==ROOM_DECK)say("GEH ZUM ANGELPLATZ UND DRUECKE A.");
+        else if(g.room==ROOM_KITCHEN)say("GEH ZUM HERD UND DRUECKE A.");
+        else if(g.room==ROOM_ROOF)say("GEH ZU DEN PFLANZEN UND DRUECKE A.");
+        else say("GEH ZUM BETT UND DRUECKE A.");
         return;
     }
     switch(g.room){
