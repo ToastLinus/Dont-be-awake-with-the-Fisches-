@@ -44,13 +44,19 @@ static const char *events[] = {
     "Ein Licht blinkt weit draussen.",
     "Der Funkempfaenger erwacht.",
     "Etwas Grosses zieht vorbei.",
-    "Ein warmer Regen zieht auf.",
-    "Eine Kiste treibt ans Boot.",
-    "Die Laterne leuchtet ploetzlich heller.",
-    "Im Nebel erklingt eine Glocke.",
-    "Ein Schwarm Fische folgt dem Boot.",
     "Der Wind reisst an den Segeln.",
+    "Im Nebel erklingt eine Glocke.",
     "Ein Schatten huscht ueber das Dach.",
+    "Die Laterne flackert im Wind.",
+    "Etwas kratzt unter dem Boot.",
+    "Ein dumpfer Ton kommt aus dem Meer.",
+    "Die Wellen schlagen gegen den Rumpf.",
+    "Ein fremdes Signal knistert im Funk."
+};
+static const char *goodEvents[] = {
+    "Ein Schwarm Fische folgt dem Boot.",
+    "Eine Kiste mit Vorraten treibt heran.",
+    "Ein warmer Regen fuellt die Tanks.",
     "Eine freundliche Stimme funkt Hilfe."
 };
 
@@ -322,7 +328,7 @@ static void draw_top(void){
         if(g.eventKind==0)text(54,65,0.72f,C(255,234,185,255),"RUHIGE NACHT");
         else if(g.eventKind==1)text(54,65,0.72f,C(255,165,145,255),"UNRUHIGE NACHT");
         else text(54,65,0.72f,C(168,230,184,255),"GUTE NACHRICHT");
-        text(52,108,0.52f,C(240,239,221,255),g.eventKind==0?"Das Meer bleibt still.":events[g.eventId]);
+        text(52,108,0.52f,C(240,239,221,255),g.eventKind==0?"Das Meer bleibt still.":(g.eventKind==1?events[g.eventId]:goodEvents[g.eventId%4]));
         text(52,144,0.47f,C(203,216,214,255),"A DRUECKEN ZUM WEITERMACHEN");
     }else{
         draw_sea();draw_boat();
