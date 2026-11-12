@@ -65,8 +65,10 @@ static const char *goodEvents[] = {
 };
 
 static u32 C(int r,int g,int b,int a){ return C2D_Color32(r,g,b,a); }
-static void rect(float x,float y,float z,float w,float h,u32 c){ C2D_DrawRectSolid(x,y,z,w,h,c); }
-static void circle(float x,float y,float z,float r,u32 c){ C2D_DrawCircleSolid(x,y,z,r,c); }
+/* Use one valid depth for every primitive. Earlier scene layers used z values above 1.0,
+   which are outside Citro2D's normalized depth range and hid the boat and menu panels. */
+static void rect(float x,float y,float z,float w,float h,u32 c){ (void)z; C2D_DrawRectSolid(x,y,0.5f,w,h,c); }
+static void circle(float x,float y,float z,float r,u32 c){ (void)z; C2D_DrawCircleSolid(x,y,0.5f,r,c); }
 static const unsigned char font5x7[36][7] = {
  {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
  {30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
