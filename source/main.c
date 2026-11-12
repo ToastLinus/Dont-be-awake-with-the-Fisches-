@@ -6,246 +6,439 @@
 #include <string.h>
 #include <math.h>
 
-#define W 400
+#define TOP_W 400
+#define BOT_W 320
 #define H 240
-#define ITEMS 6
-#define EVENTS 9
+#define MAX_TEXT 128
 
-typedef enum { PHASE_PREP, PHASE_NIGHT, PHASE_EVENT, PHASE_END } Phase;
-typedef struct { float x,y; int kind; bool taken; const char *name; } Loot;
+typedef enum { SCREEN_TITLE, SCREEN_DIFFICULTY, SCREEN_CHARACTER, SCREEN_GAME, SCREEN_EVENT, SCREEN_END } Screen;
+typedef enum { ROOM_DECK, ROOM_KITCHEN, ROOM_ROOF, ROOM_BEDROOM, ROOM_COUNT } Room;
+typedef enum { DIFF_EASY, DIFF_NORMAL, DIFF_HARD } Difficulty;
+
 typedef struct {
- int hunger, thirst, fatigue, fear, food, water, wood, beacons;
- int night, seconds, prep_left, event_left, event_id, collected;
- bool has_key, lantern, event_done;
- char message[100];
+    int day, hunger, thirst, energy, health, fear;
+    int fish, meals, water, seeds, crops, rain;
+    int wood, bait, plants;
+    int eventId, eventKind;
+    int character, name;
+    Difficulty difficulty;
+    Room room;
+    bool hasLantern;
+    bool firstRun;
+    char message[MAX_TEXT];
 } Game;
 
 static Game g;
-static Phase phase=PHASE_PREP;
-static Loot loot[ITEMS]={
- {78,143,0,false,"Konservendose"},
- {142,170,1,false,"Trinkwasser"},
- {220,130,2,false,"Bretter"},
- {305,158,3,false,"Signallicht"},
- {255,83,4,false,"Schluessel"},
- {110,92,5,false,"alte Laterne"}
+static Screen screen = SCREEN_TITLE;
+static C3D_RenderTarget *topTarget, *bottomTarget;
+static C2D_TextBuf textBuffer;
+static int frameNo = 0;
+static float wave = 0.0f;
+static int menuChoice = 0;
+static int characterChoice = 0;
+static int nameChoice = 0;
+static const char *names[] = {"JACK", "ALEX", "MORGAN", "SAM"};
+static const char *roomNames[] = {"DECK", "KUECHE", "OBERDECK", "SCHLAFZIMMER"};
+static const char *events[] = {
+    "Drei Klopfer an der Bordwand.",
+    "Ein Licht blinkt weit draussen.",
+    "Der Funkempfaenger erwacht.",
+    "Etwas Grosses zieht vorbei.",
+    "Ein warmer Regen zieht auf.",
+    "Eine Kiste treibt ans Boot.",
+    "Die Laterne leuchtet ploetzlich heller.",
+    "Im Nebel erklingt eine Glocke.",
+    "Ein Schwarm Fische folgt dem Boot.",
+    "Der Wind reisst an den Segeln.",
+    "Ein Schatten huscht ueber das Dach.",
+    "Eine freundliche Stimme funkt Hilfe."
 };
-static float px=190,py=145,walk=0,sea=0,flash=0;
-static int frame=0, second_tick=0;
-static u64 last_second=0;
-static C2D_TextBuf textbuf;
-static C3D_RenderTarget *top,*bottom;
 
-static u32 col(int r,int gg,int b,int a){return C2D_Color32(r,gg,b,a);}
-static void msg(const char *s){snprintf(g.message,sizeof(g.message),"%s",s);}
-static void txt(float x,float y,float scale,u32 tint,const char *s){
- C2D_Text t; C2D_TextParse(&t,textbuf,s); C2D_TextOptimize(&t);
- C2D_DrawText(&t,C2D_WithColor,x,y,0.5f,scale,scale,tint);
+static u32 C(int r,int g,int b,int a){ return C2D_Color32(r,g,b,a); }
+static void rect(float x,float y,float z,float w,float h,u32 c){ C2D_DrawRectSolid(x,y,z,w,h,c); }
+static void circle(float x,float y,float z,float r,u32 c){ C2D_DrawCircleSolid(x,y,z,r,c); }
+static void text(float x,float y,float s,u32 color,const char *str){
+    C2D_Text t;
+    C2D_TextParse(&t,textBuffer,str);
+    C2D_TextOptimize(&t);
+    C2D_DrawText(&t,C2D_WithColor,x,y,0.5f,s,s,color);
 }
-static void rect(float x,float y,float z,float w,float h,u32 c){C2D_DrawRectSolid(x,y,z,w,h,c);}
-static void bar(float x,float y,float w,int v,u32 c){
- if(v<0)v=0;if(v>100)v=100; rect(x,y,1,w,8,col(26,32,40,255));
- rect(x+1,y+1,1.1f,(w-2)*v/100.0f,6,c);
+static void panel(float x,float y,float w,float h){
+    rect(x+2,y+3,0.8f,w,h,C(0,0,0,90));
+    rect(x,y,0.9f,w,h,C(14,27,39,245));
+    rect(x+2,y+2,1.0f,w-4,2,C(104,177,184,255));
+    rect(x+2,y+h-4,1.0f,w-4,2,C(46,79,91,255));
 }
-static void init(void){
- memset(&g,0,sizeof(g));g.hunger=94;g.thirst=94;g.fatigue=12;g.fear=3;
- g.prep_left=60;g.night=1;g.food=0;g.water=0;g.beacons=0;
- msg("60 Sekunden! Sammle Vorräte, bevor die Nacht beginnt.");
- last_second=osGetTime();
+static void button(float x,float y,float w,float h,const char *label,bool selected){
+    rect(x,y+2,1.0f,w,h,C(0,0,0,100));
+    rect(x,y,1.1f,w,h,selected?C(50,117,124,255):C(34,57,70,255));
+    rect(x+2,y+2,1.2f,w-4,2,selected?C(180,224,190,255):C(83,119,128,255));
+    text(x+9,y+8,0.52f,C(250,242,220,255),label);
 }
-static void start_night(void){
- phase=PHASE_NIGHT;g.seconds=0;g.night++;
- msg("Die Sonne versinkt. Bleib wachsam und teile deine Vorräte ein.");
+static void say(const char *s){ snprintf(g.message,sizeof(g.message),"%s",s); }
+static int clampi(int v,int lo,int hi){ return v<lo?lo:(v>hi?hi:v); }
+
+static void reset_game(void){
+    memset(&g,0,sizeof(g));
+    g.day=1; g.hunger=85; g.thirst=85; g.energy=90; g.health=100; g.fear=5;
+    g.meals=2; g.water=2; g.seeds=2; g.wood=2; g.bait=2;
+    g.hasLantern=true; g.room=ROOM_DECK; g.firstRun=true;
+    if(g.difficulty==DIFF_EASY){g.hunger=100;g.thirst=100;g.meals=4;g.water=4;g.health=100;}
+    if(g.difficulty==DIFF_HARD){g.hunger=72;g.thirst=72;g.meals=1;g.water=1;g.health=85;}
+    say("Dein erster Tag auf See. Erkunde das Boot!");
 }
-static void take_item(void){
- for(int i=0;i<ITEMS;i++){
-  if(!loot[i].taken && fabsf(px-loot[i].x)<27 && fabsf(py-loot[i].y)<27){
-   loot[i].taken=true;g.collected++;
-   switch(loot[i].kind){
-    case 0:g.food+=2;msg("Konserven gefunden: 2 Rationen.");break;
-    case 1:g.water+=2;msg("Trinkwasser gefunden: 2 Flaschen.");break;
-    case 2:g.wood+=2;msg("Trockene Bretter: Du kannst etwas reparieren.");break;
-    case 3:g.beacons++;msg("Notsender gefunden. Fuer spaeter aufheben!");break;
-    case 4:g.has_key=true;msg("Ein kleiner Messingschluessel. Wozu gehoert er?");break;
-    case 5:g.lantern=true;msg("Die alte Laterne funktioniert noch.");break;
-   }return;
-  }
- }
- msg("Hier liegt nichts, das du mitnehmen kannst.");
+static void begin_game(void){ reset_game(); screen=SCREEN_GAME; }
+static void change_room(int dir){
+    int r=(int)g.room+dir;
+    if(r<0)r=ROOM_COUNT-1;if(r>=ROOM_COUNT)r=0;
+    g.room=(Room)r;
+    if(g.room==ROOM_DECK)say("Frische Seeluft. Zeit zum Angeln!");
+    if(g.room==ROOM_KITCHEN)say("In der Kueche kannst du Vorrate zubereiten.");
+    if(g.room==ROOM_ROOF)say("Hier wachsen deine kleinen Dachgarten-Pflanzen.");
+    if(g.room==ROOM_BEDROOM)say("Im Bett kannst du bis zum naechsten Tag schlafen.");
 }
-static const char *events[EVENTS]={
- "DREI SCHLAEGE an der Bordwand. Dann Stille.",
- "Ein Licht wandert weit draussen ueber das Wasser.",
- "Etwas zieht unter dem Boot entlang. Das Deck bebt.",
- "Ein Funkgeraet knistert: eine Stimme sagt deinen Namen.",
- "Nebel verschluckt den Horizont. Du hoerst Schritte.",
- "Ein Sturm zieht auf. Lose Dinge rutschen ueber Deck.",
- "Ein Schatten steht am Heck - und ist ploetzlich weg.",
- "Die Laterne flackert. Im Wasser leuchten zwei Punkte.",
- "Ein Signal blinkt am Horizont. Vielleicht ein Schiff."
-};
-static void trigger_event(void){
- g.event_id=rand()%EVENTS;g.event_left=7;phase=PHASE_EVENT;g.event_done=false;
- g.fear+=8;if(g.fear>100)g.fear=100;msg(events[g.event_id]);
+static void do_fish(void){
+    if(g.bait>0)g.bait--;
+    int chance=(g.difficulty==DIFF_HARD)?55:75;
+    if(rand()%100<chance){g.fish++;say("Petri Heil! Ein Fisch ist im Korb.");}
+    else {g.fear=clampi(g.fear+3,0,100);say("Heute beisst nichts. Etwas bewegt sich im Wasser.");}
+    g.energy=clampi(g.energy-7,0,100);
 }
-static void sleep_or_wait(void){
- if(phase==PHASE_PREP){msg("Noch ist Vorbereitungszeit. Sammle alles ein!");return;}
- if(g.fatigue>55){g.fatigue-=35;if(g.fatigue<0)g.fatigue=0;g.hunger-=5;g.thirst-=7;
-  if(g.hunger<0)g.hunger=0;if(g.thirst<0)g.thirst=0;msg("Du ruhst kurz. Ein Geraeusch weckt dich wieder.");
- }else msg("Du bist noch nicht muede genug zum Schlafen.");
+static void do_kitchen(void){
+    if(g.fish>0){g.fish--;g.hunger=clampi(g.hunger+28,0,100);g.health=clampi(g.health+3,0,100);say("Frischer Fisch! Du fuehlst dich gestaerkt.");}
+    else if(g.crops>0){g.crops--;g.hunger=clampi(g.hunger+20,0,100);say("Du bereitest eine Mahlzeit aus deinem Garten zu.");}
+    else if(g.meals>0){g.meals--;g.hunger=clampi(g.hunger+24,0,100);say("Eine Konservenmahlzeit. Nicht edel, aber gut.");}
+    else say("Die Vorratskiste ist leer. Geh angeln oder pflanze etwas an.");
 }
-static void use_supply(void){
- if(g.food>0 && g.hunger<90){g.food--;g.hunger+=28;if(g.hunger>100)g.hunger=100;msg("Du isst eine Ration. Das hilft.");}
- else if(g.water>0 && g.thirst<90){g.water--;g.thirst+=32;if(g.thirst>100)g.thirst=100;msg("Ein Schluck Wasser. Du kannst weiter.");}
- else if(g.beacons>0 && phase!=PHASE_PREP){g.beacons--;g.fear-=18;if(g.fear<0)g.fear=0;msg("Der Notsender blinkt auf dem Deck. Fuer einen Moment ist alles still.");}
- else msg("Nichts Passendes im Inventar. A sammelt Gegenstaende ein.");
+static void do_roof(void){
+    if(g.rain>0){g.water=clampi(g.water+g.rain,0,99);g.rain=0;say("Regenwasser in die Tanks gefuellt.");}
+    else if(g.seeds>0){g.seeds--;g.plants++;say("Samen eingepflanzt. Mit etwas Wasser wachsen sie.");}
+    else if(g.plants>0 && g.water>0){g.plants--;g.water--;g.crops+=2;say("Deine Pflanzen sind gewachsen! Zwei Ernten gesammelt.");}
+    else say("Hier ist gerade nichts zu tun. Sammle Regen oder bring Samen mit.");
 }
-static void update_second(void){
- if(phase==PHASE_PREP){
-  if(g.prep_left>0)g.prep_left--;
-  if(g.prep_left==0)start_night();
-  return;
- }
- if(phase==PHASE_EVENT){
-  if(g.event_left>0)g.event_left--;
-  if(g.event_left==0){phase=PHASE_NIGHT;msg("Das Meer ist wieder still. Aber nicht friedlich.");}
- }
- g.seconds++;
- if(g.seconds%12==0 && g.hunger>0)g.hunger--;
- if(g.seconds%9==0 && g.thirst>0)g.thirst--;
- if(g.seconds%16==0 && g.fatigue<100)g.fatigue++;
- if(g.seconds%7==0 && g.fear>0)g.fear--;
- if(g.seconds%25==0 && phase==PHASE_NIGHT)trigger_event();
- if(g.hunger==0 || g.thirst==0 || g.fatigue>=100 || g.fear>=100){
-  phase=PHASE_END;msg("Du kannst nicht mehr weitermachen. Die Nacht hat gewonnen.");
- }
+static void do_drink(void){
+    if(g.water>0){g.water--;g.thirst=clampi(g.thirst+32,0,100);say("Ein Schluck klares Regenwasser.");}
+    else say("Kein Trinkwasser mehr. Auf dem Oberdeck kannst du Regen sammeln.");
 }
-static void draw_sky(void){
- rect(0,0,0,W,H,col(5,13,27,255));
- rect(0,0,0.1f,W,95,col(11,28,46,255));
- for(int i=0;i<34;i++){
-  float x=(float)((i*83+17)%400),y=(float)((i*47+11)%88);
-  C2D_DrawCircleSolid(x,y,0.3f,(i%4==0)?1.7f:0.8f,col(170,190,201,180));
- }
- C2D_DrawCircleSolid(324,48,0.4f,22,col(207,213,194,255));
- C2D_DrawCircleSolid(333,42,0.5f,21,col(11,28,46,255));
- for(int i=0;i<7;i++){
-  float x=fmodf((float)(i*73)+sea*(i%2?1.2f:0.7f),460.0f)-30;
-  rect(x,103+(i%3)*7,0.6f,38,2,col(75,111,126,130));
- }
- rect(0,130,0.7f,W,110,col(7,29,43,255));
- for(int i=0;i<10;i++){
-  float x=fmodf((float)(i*49)+sea*(1.0f+i%3),430.0f)-25;
-  rect(x,147+(i%4)*18,0.8f,26+(i%3)*9,2,col(39,83,99,190));
- }
+static void do_sleep(void){
+    if(g.energy<100)g.energy=clampi(g.energy+55,0,100);
+    g.day++;
+    g.hunger=clampi(g.hunger-7,0,100);
+    g.thirst=clampi(g.thirst-9,0,100);
+    if(g.rain==0 && rand()%100<35)g.rain=1+rand()%2;
+    int roll=rand()%100;
+    if(roll<22){
+        g.eventKind=1;g.eventId=rand()%12;screen=SCREEN_EVENT;
+        g.fear=clampi(g.fear+8,0,100);
+    }else if(roll<47){
+        g.eventKind=2;g.eventId=rand()%12;screen=SCREEN_EVENT;
+    }else{
+        g.eventKind=0;g.eventId=-1;screen=SCREEN_EVENT;
+    }
+}
+static void resolve_event(void){
+    if(g.eventKind==1){
+        int damage=(g.difficulty==DIFF_HARD)?15:9;
+        g.health=clampi(g.health-damage,0,100);
+        g.fear=clampi(g.fear+8,0,100);
+        say("Eine unruhige Nacht. Du verlierst etwas Kraft.");
+    }else if(g.eventKind==2){
+        int gift=rand()%3;
+        if(gift==0){g.fish+=2;say("Gute Nachricht: Fische springen an Bord! +2 Fische.");}
+        else if(gift==1){g.water+=2;say("Gute Nachricht: Der Regen hat deine Tanks gefuellt! +2 Wasser.");}
+        else {g.meals++;say("Gute Nachricht: Eine Treibkiste enthaelt eine Mahlzeit!");}
+        g.fear=clampi(g.fear-5,0,100);
+    }else say("Eine ruhige Nacht. Das Meer war heute freundlich.");
+    if(g.hunger<=0 || g.thirst<=0 || g.health<=0){screen=SCREEN_END;}
+    else {screen=SCREEN_GAME;g.room=ROOM_BEDROOM;}
+}
+static void interact(void){
+    if(screen!=SCREEN_GAME)return;
+    switch(g.room){
+        case ROOM_DECK: do_fish();break;
+        case ROOM_KITCHEN: do_kitchen();break;
+        case ROOM_ROOF: do_roof();break;
+        case ROOM_BEDROOM: do_sleep();break;
+        default:break;
+    }
+    if(g.hunger<=0 || g.thirst<=0 || g.health<=0)screen=SCREEN_END;
+}
+static void update_stats(void){
+    if(g.hunger>0)g.hunger=clampi(g.hunger-1,0,100);
+    if(g.thirst>0)g.thirst=clampi(g.thirst-1,0,100);
+    if(g.hunger<20 || g.thirst<20)g.health=clampi(g.health-1,0,100);
+    if(g.health<=0 || g.hunger<=0 || g.thirst<=0)screen=SCREEN_END;
+}
+static void draw_sea(void){
+    rect(0,0,0,TOP_W,240,C(9,24,43,255));
+    rect(0,0,0.1f,TOP_W,82,C(20,47,69,255));
+    circle(325,42,0.2f,20,C(222,218,181,255));
+    circle(333,35,0.3f,18,C(20,47,69,255));
+    for(int i=0;i<35;i++){
+        float x=(float)((i*79+frameNo*0.11f*(i%3+1))%410);
+        float y=(float)((i*37+13)%78);
+        circle(x,y,0.4f,(i%5==0)?1.3f:0.7f,C(204,218,213,180));
+    }
+    rect(0,94,0.5f,TOP_W,146,C(8,45,62,255));
+    for(int i=0;i<18;i++){
+        float x=fmodf((float)i*43.0f+wave*(0.8f+(i%4)*0.25f),450.0f)-25.0f;
+        float y=102+(i%6)*22;
+        rect(x,y,0.7f,22+(i%3)*10,2,C(55,113,129,170));
+        rect(x+7,y+4,0.7f,12,1,C(107,156,158,110));
+    }
 }
 static void draw_boat(void){
- /* Deck boards, raised railings, cabin, mast and rope details. */
- rect(27,100,1.0f,347,122,col(61,48,40,255));
- rect(34,105,1.1f,332,7,col(128,96,66,255));
- rect(34,211,1.1f,332,8,col(35,31,29,255));
- for(int i=0;i<9;i++)rect(40+i*39,111,1.2f,2,96,col(36,34,32,255));
- rect(49,117,1.3f,94,54,col(44,48,47,255));
- rect(55,123,1.4f,82,39,col(20,35,42,255));
- rect(60,128,1.5f,27,24,col(105,140,143,150));
- rect(94,128,1.5f,35,24,col(105,140,143,150));
- rect(258,125,1.3f,70,42,col(104,76,52,255));
- rect(266,117,1.4f,54,9,col(146,108,70,255));
- rect(180,60,1.3f,4,45,col(137,122,100,255));
- rect(184,65,1.3f,72,3,col(171,153,119,255));
- rect(188,68,1.4f,2,31,col(171,153,119,255));
- for(int i=0;i<6;i++)rect(32+i*66,99,1.6f,3,12,col(156,126,89,255));
- /* animated lantern glow */
- float glow=8.0f+3.0f*sinf((float)frame*0.09f);
- C2D_DrawCircleSolid(82,145,2.0f,glow,col(237,171,85,35));
- C2D_DrawCircleSolid(82,145,2.1f,4,col(255,203,112,255));
+    /* layered hull, deck planks, railings, cabin and warm portholes */
+    rect(26,145,1.0f,348,62,C(28,34,42,255));
+    rect(34,135,1.1f,332,22,C(126,79,49,255));
+    rect(40,139,1.2f,320,5,C(184,128,76,255));
+    for(int i=0;i<10;i++){
+        rect(43+i*34,148,1.3f,2,52,C(78,50,38,255));
+        rect(43+i*34,158,1.3f,27,1,C(160,109,69,150));
+    }
+    rect(70,93,1.4f,115,47,C(54,67,68,255));
+    rect(78,101,1.5f,99,31,C(18,43,54,255));
+    rect(85,106,1.6f,31,20,C(104,163,164,255));
+    rect(127,106,1.6f,39,20,C(104,163,164,255));
+    rect(275,108,1.4f,66,31,C(111,72,46,255));
+    rect(267,101,1.5f,82,9,C(181,124,72,255));
+    rect(193,44,1.4f,4,91,C(157,139,106,255));
+    rect(197,53,1.4f,65,3,C(192,170,126,255));
+    rect(198,56,1.5f,2,29,C(192,170,126,255));
+    for(int i=0;i<6;i++){rect(38+i*65,128,1.6f,3,16,C(210,173,113,255));}
+    circle(112,118,1.8f,5,C(255,203,111,255));
+    circle(148,118,1.8f,5,C(255,203,111,255));
+    circle(112,118,1.9f,2,C(255,239,177,255));
+    circle(148,118,1.9f,2,C(255,239,177,255));
 }
-static void draw_player(void){
- float bob=sinf(walk)*2.2f;
- C2D_DrawCircleSolid(px,py+7+bob,2.0f,8,col(0,0,0,85));
- rect(px-5,py-5+bob,2.1f,10,14,col(49,68,76,255));
- C2D_DrawCircleSolid(px,py-10+bob,2.2f,5.5f,col(202,169,132,255));
- rect(px-6,py-16+bob,2.3f,12,4,col(38,35,32,255));
- rect(px-7,py+7+bob,2.2f,4,7,col(42,42,44,255));
- rect(px+3,py+7+bob,2.2f,4,7,col(42,42,44,255));
-}
-static void draw_item(Loot *it){
- if(it->taken)return;
- u32 c=col(220,181,111,255);
- if(it->kind==1)c=col(92,175,213,255);
- if(it->kind==2)c=col(147,105,72,255);
- if(it->kind==3)c=col(240,90,68,255);
- if(it->kind==4)c=col(214,194,111,255);
- if(it->kind==5)c=col(238,179,86,255);
- C2D_DrawCircleSolid(it->x,it->y,2.0f,9,c);
- rect(it->x-4,it->y-3,2.1f,8,6,col(29,34,36,255));
- C2D_DrawCircleSolid(it->x,it->y,2.2f,2.2f,c);
+static void draw_room_scene(void){
+    draw_sea();
+    if(g.room==ROOM_DECK){
+        draw_boat();
+        text(18,12,0.65f,C(255,239,205,255),"AUSSENDECK");
+        /* fishing rod, bucket and rope details */
+        rect(285,91,1.8f,3,47,C(93,65,43,255));
+        rect(287,91,1.8f,36,2,C(197,171,126,255));
+        circle(310,177,1.8f,12,C(48,91,99,255));
+        circle(310,177,1.9f,8,C(18,49,61,255));
+        text(20,211,0.48f,C(244,223,186,255),"Angeln und Vorrate sammeln");
+    }else if(g.room==ROOM_KITCHEN){
+        rect(0,0,0.8f,TOP_W,240,C(32,47,55,255));
+        rect(0,178,0.9f,TOP_W,62,C(89,63,47,255));
+        rect(30,76,1.0f,340,105,C(112,76,53,255));
+        rect(39,84,1.1f,322,5,C(191,143,91,255));
+        rect(53,106,1.2f,105,67,C(58,69,68,255));
+        rect(63,116,1.3f,85,44,C(28,43,48,255));
+        rect(211,105,1.2f,137,69,C(68,76,70,255));
+        rect(224,116,1.3f,111,12,C(183,138,86,255));
+        for(int i=0;i<3;i++)circle(244+i*29,145,1.5f,8,C(201,91+i*25,63,255));
+        rect(79,50,1.4f,68,24,C(22,37,43,255));
+        circle(95,62,1.5f,6,C(255,191,98,255));
+        circle(111,62,1.5f,6,C(255,191,98,255));
+        text(18,12,0.65f,C(255,239,205,255),"KUECHE");
+        text(24,211,0.48f,C(244,223,186,255),"Fisch, Pflanzen oder Konserven essen");
+    }else if(g.room==ROOM_ROOF){
+        rect(0,0,0.8f,TOP_W,240,C(16,51,65,255));
+        rect(0,0,0.9f,TOP_W,85,C(36,75,91,255));
+        for(int i=0;i<24;i++){
+            float x=(i*53+frameNo*0.5f)%410;
+            rect(x,(i*31)%82,1.0f,2,11,C(133,194,205,130));
+        }
+        rect(22,133,1.1f,355,68,C(100,66,46,255));
+        rect(37,121,1.2f,326,18,C(177,128,76,255));
+        for(int i=0;i<5;i++){
+            rect(48+i*65,147,1.3f,52,35,C(67,48,39,255));
+            rect(52+i*65,151,1.4f,44,27,C(50,91,55,255));
+            for(int j=0;j<3;j++){
+                rect(59+i*65+j*12,155,1.5f,5,15,C(88,157,78,255));
+                circle(61+i*65+j*12,155,1.6f,4,C(117,185,91,255));
+            }
+        }
+        text(18,12,0.65f,C(255,239,205,255),"OBERDECK-GARTEN");
+        text(24,211,0.48f,C(244,223,186,255),"Regen sammeln und Pflanzen anbauen");
+    }else{
+        rect(0,0,0.8f,TOP_W,240,C(27,35,48,255));
+        rect(0,178,0.9f,TOP_W,62,C(71,50,47,255));
+        rect(44,93,1.0f,312,91,C(104,72,58,255));
+        rect(54,102,1.1f,292,73,C(44,53,62,255));
+        rect(82,131,1.2f,230,57,C(126,78,69,255));
+        rect(82,122,1.3f,230,15,C(203,158,123,255));
+        rect(93,137,1.4f,207,40,C(222,188,151,255));
+        rect(73,69,1.3f,71,55,C(23,47,59,255));
+        rect(79,75,1.4f,59,43,C(89,142,148,255));
+        circle(329,62,1.5f,12,C(255,193,108,70));
+        circle(329,62,1.6f,5,C(255,204,120,255));
+        text(18,12,0.65f,C(255,239,205,255),"SCHLAFZIMMER");
+        text(24,211,0.48f,C(244,223,186,255),"Ausruhen und den Tag ueberspringen");
+    }
 }
 static void draw_top(void){
- C2D_SceneBegin(top);
- draw_sky();draw_boat();
- for(int i=0;i<ITEMS;i++)draw_item(&loot[i]);
- draw_player();
- txt(12,9,0.55f,col(242,232,211,255),"DONT BE AWAKE WITH THE FISCHES");
- if(phase==PHASE_PREP){
-  char b[64];snprintf(b,sizeof(b),"VORBEREITUNG: %02d SEKUNDEN",g.prep_left);
-  rect(84,28,4,232,27,col(4,10,17,220));txt(96,35,0.62f,col(255,214,139,255),b);
- }else{
-  char b[48];snprintf(b,sizeof(b),"NACHT %d  |  %02d:%02d",g.night,g.seconds/60,g.seconds%60);
-  txt(12,27,0.46f,col(206,219,224,255),b);
- }
- if(phase==PHASE_EVENT){
-  rect(35,38,5,330,49,col(5,8,13,230));
-  txt(48,47,0.58f,col(255,213,171,255),"UNGEWOEHNLICHES EREIGNIS");
-  txt(48,68,0.42f,col(235,235,225,255),events[g.event_id]);
- }
- if(phase==PHASE_END){
-  rect(38,67,5,324,90,col(5,8,13,235));
-  txt(72,82,0.75f,col(235,103,92,255),"DIE NACHT HAT GEWONNEN");
-  txt(70,112,0.45f,col(236,230,213,255),"START druecken fuer Neustart");
- }
+    C2D_TargetClear(topTarget,C(5,13,24,255));
+    C2D_SceneBegin(topTarget);
+    if(screen==SCREEN_TITLE || screen==SCREEN_DIFFICULTY || screen==SCREEN_CHARACTER){
+        draw_sea();draw_boat();
+        rect(0,0,4,TOP_W,240,C(0,0,0,65));
+        panel(37,30,326,178);
+        text(58,46,0.78f,C(255,232,187,255),"DONT BE AWAKE");
+        text(58,72,0.78f,C(255,232,187,255),"WITH THE FISCHES");
+        text(60,112,0.5f,C(183,215,207,255),"EIN ABENTEUER AUF OFFENER SEE");
+        if(screen==SCREEN_TITLE)text(84,166,0.55f,C(255,236,194,255),"A DRUECKEN ODER TOUCH START");
+        if(screen==SCREEN_DIFFICULTY)text(82,164,0.55f,C(255,236,194,255),"WAEHLE DEINE HERAUSFORDERUNG");
+        if(screen==SCREEN_CHARACTER){
+            text(77,133,0.55f,C(255,236,194,255),"KAPITAEN: ");
+            text(170,133,0.55f,C(255,236,194,255),names[nameChoice]);
+            text(77,158,0.55f,C(255,236,194,255),"LOOK: ");
+            text(170,158,0.55f,C(255,236,194,255),characterChoice==0?"KLASSISCH":(characterChoice==1?"REGENJACKE":"SEEMANN"));
+        }
+    }else if(screen==SCREEN_GAME){
+        draw_room_scene();
+        panel(10,34,380,34);
+        char b[80];snprintf(b,sizeof(b),"TAG %d   HUNGER %d   DURST %d   KRAFT %d",g.day,g.hunger,g.thirst,g.energy);
+        text(20,45,0.48f,C(255,245,224,255),b);
+        if(g.room==ROOM_DECK){
+            circle(178,183,2.0f,6,C(196,158,118,255));
+            circle(185,179,2.0f,5,C(199,174,139,255));
+        }
+    }else if(screen==SCREEN_EVENT){
+        draw_room_scene();
+        panel(25,45,350,148);
+        if(g.eventKind==0)text(54,65,0.72f,C(255,234,185,255),"RUHIGE NACHT");
+        else if(g.eventKind==1)text(54,65,0.72f,C(255,165,145,255),"UNRUHIGE NACHT");
+        else text(54,65,0.72f,C(168,230,184,255),"GUTE NACHRICHT");
+        text(52,108,0.52f,C(240,239,221,255),g.eventKind==0?"Das Meer bleibt still.":events[g.eventId]);
+        text(52,144,0.47f,C(203,216,214,255),"A DRUECKEN ZUM WEITERMACHEN");
+    }else{
+        draw_sea();draw_boat();
+        panel(36,55,328,130);
+        text(82,75,0.78f,C(255,174,155,255),"REISE BEENDET");
+        text(76,119,0.55f,C(246,235,215,255),"Du hast bis Tag ueberlebt:");
+        char b[32];snprintf(b,sizeof(b),"TAG %d",g.day);text(162,145,0.62f,C(255,232,187,255),b);
+    }
+    C2D_SceneEnd();
+}
+static void statbar(float x,float y,const char *label,int v,u32 fill){
+    text(x,y,0.43f,C(220,229,220,255),label);
+    rect(x+83,y+2,1.0f,112,8,C(37,48,56,255));
+    rect(x+85,y+4,1.1f,108.0f*v/100.0f,4,fill);
 }
 static void draw_bottom(void){
- C2D_SceneBegin(bottom);
- rect(0,0,0,320,240,col(13,19,27,255));
- txt(12,9,0.57f,col(239,228,204,255),"JACKSTONE - UEBERLEBEN");
- txt(12,35,0.42f,col(181,197,205,255),"HUNGER");bar(105,37,195,g.hunger,col(196,139,76,255));
- txt(12,56,0.42f,col(181,197,205,255),"DURST");bar(105,58,195,g.thirst,col(72,157,203,255));
- txt(12,77,0.42f,col(181,197,205,255),"MUEDIGKEIT");bar(105,79,195,g.fatigue,col(145,126,190,255));
- txt(12,98,0.42f,col(181,197,205,255),"ANGST");bar(105,100,195,g.fear,col(190,76,76,255));
- txt(12,124,0.48f,col(239,216,174,255),"VORRAETE");
- char b[80];snprintf(b,sizeof(b),"Essen %d   Wasser %d   Holz %d",g.food,g.water,g.wood);
- txt(12,143,0.43f,col(218,221,213,255),b);
- snprintf(b,sizeof(b),"Notsender %d   Schluessel %s",g.beacons,g.has_key?"JA":"NEIN");
- txt(12,160,0.43f,col(218,221,213,255),b);
- txt(12,184,0.39f,col(229,190,139,255),g.message);
- txt(12,211,0.38f,col(153,172,183,255),"A Sammeln  Y Nutzen  X Ruhen  B Karte");
+    C2D_TargetClear(bottomTarget,C(9,18,28,255));
+    C2D_SceneBegin(bottomTarget);
+    if(screen==SCREEN_TITLE){
+        panel(14,20,292,198);
+        text(34,39,0.66f,C(255,232,187,255),"WILLKOMMEN AN BORD");
+        text(34,79,0.5f,C(207,220,214,255),"Ein Boot. Ein endloses Meer.");
+        text(34,101,0.5f,C(207,220,214,255),"Und Naechte voller Geheimnisse.");
+        button(48,151,224,34,"NEUES SPIEL",true);
+        text(60,198,0.42f,C(160,184,188,255),"TOUCH ODER A ZUM STARTEN");
+    }else if(screen==SCREEN_DIFFICULTY){
+        panel(14,18,292,204);text(34,31,0.62f,C(255,232,187,255),"SCHWIERIGKEIT");
+        button(40,75,240,30,"EINFACH",menuChoice==0);
+        button(40,116,240,30,"NORMAL",menuChoice==1);
+        button(40,157,240,30,"SCHWER",menuChoice==2);
+        text(36,197,0.4f,C(165,190,194,255),"LINKS/RECHTS + A ODER TOUCH");
+    }else if(screen==SCREEN_CHARACTER){
+        panel(12,14,296,210);text(30,27,0.62f,C(255,232,187,255),"DEIN KAPITAEN");
+        text(28,65,0.48f,C(210,223,215,255),"NAME");
+        button(28,83,264,29,names[nameChoice],false);
+        text(28,124,0.48f,C(210,223,215,255),"KLEIDUNG");
+        button(28,142,264,29,characterChoice==0?"KLASSISCH":(characterChoice==1?"REGENJACKE":"SEEMANN"),false);
+        button(65,184,190,29,"AB AUFS MEER!",true);
+    }else if(screen==SCREEN_GAME){
+        panel(7,7,306,226);
+        text(18,14,0.55f,C(255,232,187,255),"AN BORD  /  TAG");
+        char b[50];snprintf(b,sizeof(b),"%d",g.day);text(272,14,0.55f,C(255,232,187,255),b);
+        statbar(18,43,"HUNGER",g.hunger,C(222,157,82,255));
+        statbar(18,63,"DURST",g.thirst,C(88,178,214,255));
+        statbar(18,83,"KRAFT",g.energy,C(155,151,218,255));
+        statbar(18,103,"GESUNDHEIT",g.health,C(101,190,132,255));
+        text(18,128,0.48f,C(255,224,176,255),"VORRAETE");
+        snprintf(b,sizeof(b),"Fisch %d  Essen %d  Wasser %d",g.fish,g.meals,g.water);text(18,147,0.43f,C(218,226,219,255),b);
+        snprintf(b,sizeof(b),"Samen %d  Ernte %d  Regen %d",g.seeds,g.crops,g.rain);text(18,164,0.43f,C(218,226,219,255),b);
+        text(18,184,0.42f,C(184,207,207,255),roomNames[g.room]);
+        button(18,202,137,25,"ZURUECK ◀",false);
+        button(165,202,137,25,"AKTION  A",true);
+    }else if(screen==SCREEN_EVENT){
+        panel(10,15,300,210);
+        text(28,30,0.62f,C(255,232,187,255),"DIE NACHT");
+        text(28,73,0.48f,C(210,223,215,255),g.eventKind==0?"Alles ist ruhig.":(g.eventKind==1?"Etwas ist passiert!":"Das Glueck ist auf deiner Seite."));
+        text(28,112,0.45f,C(190,212,210,255),"Druecke A, um den Morgen zu sehen.");
+        button(65,173,190,32,"WEITER",true);
+    }else{
+        panel(12,20,296,200);
+        text(48,42,0.72f,C(255,185,165,255),"ENDE DER REISE");
+        text(39,91,0.5f,C(215,226,218,255),"Du hast Tag fuer Tag gekaempft.");
+        button(52,158,216,34,"NOCH EINMAL",true);
+    }
+    C2D_SceneEnd();
 }
+static bool touch_in(touchPosition t,int x,int y,int w,int h){return t.px>=x&&t.px<x+w&&t.py>=y&&t.py<y+h;}
 int main(int argc,char **argv){
- (void)argc;(void)argv;
- gfxInitDefault();C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);C2D_Init(C2D_DEFAULT_MAX_OBJECTS);C2D_Prepare();
- top=C2D_CreateScreenTarget(GFX_TOP,GFX_LEFT);bottom=C2D_CreateScreenTarget(GFX_BOTTOM,GFX_LEFT);
- textbuf=C2D_TextBufNew(4096);srand((unsigned int)osGetTime());init();
- while(aptMainLoop()){
-  hidScanInput();u32 down=hidKeysDown();u32 held=hidKeysHeld();circlePosition cp;hidCircleRead(&cp);
-  if(down&KEY_START){if(phase==PHASE_END){init();phase=PHASE_PREP;px=190;py=145;for(int i=0;i<ITEMS;i++)loot[i].taken=false;}else break;}
-  if(down&KEY_A)take_item();
-  if(down&KEY_Y)use_supply();
-  if(down&KEY_X)sleep_or_wait();
-  if(down&KEY_B)msg("Deckplan: Heck links, Kabine mittig, Vorratskisten rechts.");
-  if(phase!=PHASE_END){
-   float dx=cp.dx/850.0f,dy=-cp.dy/850.0f;
-   if(held&KEY_DLEFT)dx-=2.4f;if(held&KEY_DRIGHT)dx+=2.4f;
-   if(held&KEY_DUP)dy-=2.4f;if(held&KEY_DDOWN)dy+=2.4f;
-   if(fabsf(dx)+fabsf(dy)>0.1f){px+=dx;py+=dy;walk+=0.23f;}
-   if(px<40)px=40;if(px>360)px=360;if(py<78)py=78;if(py>205)py=205;
-   sea+=0.35f;flash+=0.07f;frame++;
-   u64 now=osGetTime();if(now-last_second>=1000){last_second+=1000;update_second();}
-  }
-  C2D_TextBufClear(textbuf);
-  C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-  draw_top();draw_bottom();
-  C3D_FrameEnd(0);
- }
- C2D_TextBufDelete(textbuf);C2D_Fini();C3D_Fini();gfxExit();return 0;
+    (void)argc;(void)argv;
+    gfxInitDefault();
+    C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
+    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    C2D_Prepare();
+    topTarget=C2D_CreateScreenTarget(GFX_TOP,GFX_LEFT);
+    bottomTarget=C2D_CreateScreenTarget(GFX_BOTTOM,GFX_LEFT);
+    textBuffer=C2D_TextBufNew(4096);
+    srand((unsigned int)osGetTime());
+    g.difficulty=DIFF_NORMAL;
+    while(aptMainLoop()){
+        hidScanInput();
+        u32 down=hidKeysDown();
+        touchPosition touch;hidTouchRead(&touch);
+        bool tapped=(down&KEY_TOUCH)!=0;
+        if(screen==SCREEN_TITLE){
+            if((down&KEY_A)||tapped){screen=SCREEN_DIFFICULTY;menuChoice=1;}
+        }else if(screen==SCREEN_DIFFICULTY){
+            if(down&KEY_UP)menuChoice=(menuChoice+2)%3;
+            if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;
+            if(tapped){
+                if(touch_in(touch,40,75,240,30))menuChoice=0;
+                if(touch_in(touch,40,116,240,30))menuChoice=1;
+                if(touch_in(touch,40,157,240,30))menuChoice=2;
+                if(touch_in(touch,40,75,240,112)){g.difficulty=(Difficulty)menuChoice;screen=SCREEN_CHARACTER;}
+            }
+            if(down&KEY_A){g.difficulty=(Difficulty)menuChoice;screen=SCREEN_CHARACTER;}
+            if(down&KEY_B)screen=SCREEN_TITLE;
+        }else if(screen==SCREEN_CHARACTER){
+            if(down&KEY_LEFT)nameChoice=(nameChoice+3)%4;
+            if(down&KEY_RIGHT)nameChoice=(nameChoice+1)%4;
+            if(down&KEY_UP)characterChoice=(characterChoice+2)%3;
+            if(down&KEY_DOWN)characterChoice=(characterChoice+1)%3;
+            if(tapped){
+                if(touch_in(touch,28,83,264,29))nameChoice=(nameChoice+1)%4;
+                else if(touch_in(touch,28,142,264,29))characterChoice=(characterChoice+1)%3;
+                else if(touch_in(touch,65,184,190,29))begin_game();
+            }
+            if(down&KEY_A)begin_game();
+            if(down&KEY_B)screen=SCREEN_DIFFICULTY;
+        }else if(screen==SCREEN_GAME){
+            if(down&KEY_LEFT)change_room(-1);
+            if(down&KEY_RIGHT)change_room(1);
+            if(down&KEY_A)interact();
+            if(down&KEY_B)do_drink();
+            if(tapped){
+                if(touch_in(touch,18,202,137,25))change_room(-1);
+                else if(touch_in(touch,165,202,137,25))interact();
+                else if(touch_in(touch,0,0,160,190))change_room(-1);
+                else if(touch_in(touch,160,0,160,190))change_room(1);
+            }
+            if(down&KEY_X){if(g.room==ROOM_BEDROOM)do_sleep();else say("Zum Schlafen ins Schlafzimmer gehen.");}
+            if((frameNo%180)==0)update_stats();
+        }else if(screen==SCREEN_EVENT){
+            if((down&KEY_A)||tapped)resolve_event();
+        }else if(screen==SCREEN_END){
+            if((down&KEY_A)||tapped){screen=SCREEN_TITLE;g.difficulty=DIFF_NORMAL;}
+        }
+        wave+=0.35f;frameNo++;
+        C2D_TextBufClear(textBuffer);
+        C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+        draw_top();draw_bottom();
+        C3D_FrameEnd(0);
+    }
+    C2D_TextBufDelete(textBuffer);
+    C2D_Fini();C3D_Fini();gfxExit();
+    return 0;
 }
