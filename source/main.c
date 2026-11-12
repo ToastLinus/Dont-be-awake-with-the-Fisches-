@@ -120,14 +120,15 @@ static void draw_ship_view(void){
 static void draw_boat_view(void){
  sky(hour<6||hour>=19);
  /* compact dinghy: visible bow, gunwales and one mast from the player's eyes */
+ float drift=sinf(sway)*2.2f;
  R(0,150,400,90,C(10,55,70,255));
  for(int i=0;i<14;i++){float x=fmodf(i*41+frame*(.5f+i%3*.12f),420)-10;R(x,154+(i%5)*15,27,2,C(86,149,157,180));}
- R(0,188,400,52,C(93,60,39,255));R(0,181,400,8,C(147,99,60,255));
- R(0,172,74,68,C(117,77,47,255));R(326,172,74,68,C(117,77,47,255));
- R(12,176,376,4,C(193,147,94,255));
- R(195,33,5,151,C(112,87,62,255));R(199,41,2,112,C(195,165,118,255));
+ R(0,188+drift,400,52,C(93,60,39,255));R(0,181+drift,400,8,C(147,99,60,255));
+ R(0,172+drift,74,68,C(117,77,47,255));R(326,172+drift,74,68,C(117,77,47,255));
+ R(12,176+drift,376,4,C(193,147,94,255));
+ R(195+drift,33,5,151,C(112,87,62,255));R(199+drift,41,2,112,C(195,165,118,255));
  /* sail */
- R(204,43,96,82,C(218,211,182,255));R(207,48,86,70,C(185,192,176,255));
+ R(204+drift,43,96,82,C(218,211,182,255));R(207+drift,48,86,70,C(185,192,176,255));
  for(int i=0;i<4;i++)R(212+i*20,52,1,59,C(143,151,140,255));
  /* clearly visible first-person fishing rod, line and bobber */
  R(301,153,4,48,C(105,69,43,255));R(292,153,12,3,C(185,148,102,255));
@@ -289,8 +290,7 @@ int main(int argc,char **argv){
        else if(plants<2&&food>0){food--;plants++;plantDays=0;say("Du pflanzt etwas an. Pflege es ueber mehrere Tage.");}
        else say("Hier gibt es gerade nichts zu tun.");
      }else{
-       if(hour<19)say("Es ist noch zu frueh. Schlafen kannst du abends.");
-       else if(sleptToday)say("Du hast heute schon geschlafen.");
+       if(sleptToday)say("Du hast heute schon geschlafen.");
        else{sleptToday=true;nightEvent=rand()%100;phase=NIGHT;}
      }
    }
@@ -303,7 +303,7 @@ int main(int argc,char **argv){
      else if(tap(t,230,177,72,45))room=3;
    }
   }else if(phase==NIGHT){if((down&KEY_A)||touched){
-   day++;hour=6;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
+   day++;hour=6;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
    if(nightEvent<50)say("Eine ruhige Nacht. Du bist ausgeruht.");
    else if(nightEvent<78){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
    else{food++;say("GUTES ZEICHEN: Treibgut mit Essen ist am Boot!");}
