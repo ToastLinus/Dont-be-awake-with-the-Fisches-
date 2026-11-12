@@ -399,7 +399,7 @@ static void draw_bottom(void){
         text(39,91,0.5f,C(215,226,218,255),"Du hast Tag fuer Tag gekaempft.");
         button(52,158,216,34,"NOCH EINMAL",true);
     }
-    C2D_SceneEnd();
+    /* Citro2D has no C2D_SceneEnd; the frame is flushed by C3D_FrameEnd. */
 }
 static bool touch_in(touchPosition t,int x,int y,int w,int h){return t.px>=x&&t.px<x+w&&t.py>=y&&t.py<y+h;}
 int main(int argc,char **argv){
