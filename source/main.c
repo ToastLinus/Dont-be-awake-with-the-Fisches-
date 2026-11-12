@@ -31,7 +31,7 @@ typedef struct {
 static Game g;
 static Screen screen = SCREEN_TITLE;
 static C3D_RenderTarget *topTarget, *bottomTarget;
-static C2D_TextBuf textBuffer;
+/* Bitmap font: avoids the system-font cache that was invisible on some 3DS setups. */
 static int frameNo = 0;
 static float wave = 0.0f;
 static int roomToastFrames = 0;
@@ -67,11 +67,51 @@ static const char *goodEvents[] = {
 static u32 C(int r,int g,int b,int a){ return C2D_Color32(r,g,b,a); }
 static void rect(float x,float y,float z,float w,float h,u32 c){ C2D_DrawRectSolid(x,y,z,w,h,c); }
 static void circle(float x,float y,float z,float r,u32 c){ C2D_DrawCircleSolid(x,y,z,r,c); }
+static const unsigned char font5x7[36][7] = {
+ {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
+ {30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
+ {14,17,16,23,17,17,15},{17,17,17,31,17,17,17},{31,4,4,4,4,4,31},
+ {7,2,2,2,18,18,12},{17,18,20,24,20,18,17},{16,16,16,16,16,16,31},
+ {17,27,21,21,17,17,17},{17,25,21,19,17,17,17},{14,17,17,17,17,17,14},
+ {30,17,17,30,16,16,16},{14,17,17,17,21,18,13},{30,17,17,30,20,18,17},
+ {15,16,16,14,1,1,30},{31,4,4,4,4,4,4},{17,17,17,17,17,17,14},
+ {17,17,17,17,17,10,4},{17,17,17,21,21,21,10},{17,17,10,4,10,17,17},
+ {17,17,10,4,4,4,4},{31,1,2,4,8,16,31},
+ {14,17,19,21,25,17,14},{4,12,4,4,4,4,14},{14,17,1,2,4,8,31},
+ {30,1,1,14,1,1,30},{2,6,10,18,31,2,2},{31,16,16,30,1,1,30},
+ {14,16,16,30,17,17,14},{31,1,2,4,8,8,8},
+ {14,17,17,14,17,17,14},{14,17,17,15,1,1,14}
+};
+static const unsigned char *glyph(char ch){
+    static const unsigned char blank[7]={0,0,0,0,0,0,0};
+    static const unsigned char dash[7]={0,0,0,31,0,0,0};
+    static const unsigned char dot[7]={0,0,0,0,0,12,12};
+    static const unsigned char colon[7]={0,12,12,0,12,12,0};
+    static const unsigned char bang[7]={4,4,4,4,4,0,4};
+    static const unsigned char question[7]={14,17,1,2,4,0,4};
+    static const unsigned char plus[7]={0,4,4,31,4,4,0};
+    static const unsigned char slash[7]={1,2,2,4,8,8,16};
+    static const unsigned char apost[7]={4,4,8,0,0,0,0};
+    if(ch>='a'&&ch<='z')ch=(char)(ch-'a'+'A');
+    if(ch>='A'&&ch<='Z')return font5x7[ch-'A'];
+    if(ch>='0'&&ch<='9')return font5x7[26+ch-'0'];
+    switch(ch){case '-':case '_':return dash;case '.':return dot;case ':':return colon;case '!':return bang;case '?':return question;case '+':return plus;case '/':return slash;case '\\'':return apost;case ' ':return blank;default:return blank;}
+}
 static void text(float x,float y,float s,u32 color,const char *str){
-    C2D_Text t;
-    C2D_TextParse(&t,textBuffer,str);
-    C2D_TextOptimize(&t);
-    C2D_DrawText(&t,C2D_WithColor,x,y,0.5f,s,s,color);
+    float cell=s*2.4f;
+    if(cell<1.0f)cell=1.0f;
+    for(;*str;str++,x+=cell*6.0f){
+        const unsigned char *rows=glyph(*str);
+        for(int row=0;row<7;row++){
+            int col=0;
+            while(col<5){
+                if(!(rows[row]&(1u<<(4-col)))){col++;continue;}
+                int start=col;
+                while(col<5&&(rows[row]&(1u<<(4-col))))col++;
+                rect(x+start*cell,y+row*cell,0.55f,(col-start)*cell,cell*0.88f,color);
+            }
+        }
+    }
 }
 static void panel(float x,float y,float w,float h){
     rect(x+2,y+3,0.8f,w,h,C(0,0,0,90));
@@ -463,11 +503,11 @@ int main(int argc,char **argv){
     (void)argc;(void)argv;
     gfxInitDefault();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
-    C2D_Init(C2D_DEFAULT_MAX_OBJECTS);
+    C2D_Init(12000);
     C2D_Prepare();
     topTarget=C2D_CreateScreenTarget(GFX_TOP,GFX_LEFT);
     bottomTarget=C2D_CreateScreenTarget(GFX_BOTTOM,GFX_LEFT);
-    textBuffer=C2D_TextBufNew(4096);
+    /* No system text buffer required: all labels use the built-in bitmap font. */
     srand((unsigned int)osGetTime());
     g.difficulty=DIFF_NORMAL;
     while(aptMainLoop()){
@@ -522,12 +562,10 @@ int main(int argc,char **argv){
         if(actionToastFrames>0)actionToastFrames--;
         if(actionAnimFrames>0)actionAnimFrames--;
         wave+=0.35f;frameNo++;
-        C2D_TextBufClear(textBuffer);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
         draw_top();draw_bottom();
         C3D_FrameEnd(0);
     }
-    C2D_TextBufDelete(textBuffer);
     C2D_Fini();C3D_Fini();gfxExit();
     return 0;
 }
