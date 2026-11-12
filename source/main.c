@@ -82,6 +82,8 @@ static void reset_game(void){
     Difficulty selectedDifficulty=g.difficulty;
     memset(&g,0,sizeof(g));
     g.difficulty=selectedDifficulty;
+    g.character=characterChoice;
+    g.name=nameChoice;
     g.day=1; g.hunger=85; g.thirst=85; g.energy=90; g.health=100; g.fear=5;
     g.meals=2; g.water=2; g.seeds=2; g.wood=2; g.bait=2;
     g.hasLantern=true; g.room=ROOM_DECK; g.firstRun=true;
