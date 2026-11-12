@@ -13,7 +13,10 @@
 typedef enum { INTRO, SHIP, BOAT, NIGHT, ENDING } Phase;
 static Phase phase=INTRO;
 static C3D_RenderTarget *top,*bottom;
-static int frame=0, area=0, facing=0, food=0, water=0, rope=0, fish=0, day=1, hunger=100, thirst=100, stamina=100, caught=0;
+static int frame=0, area=0, facing=0, food=0, water=0, rope=0, fish=0, day=1, hunger=100, thirst=100, caught=0;
+static int energy[3]={100,100,100};
+static int menuChoice=0;
+static bool menuHelp=false;
 static int hour=8, room=0, bait=3, plants=0, plantDays=0, lastFishHour=-1, nightEvent=0, weather=0;
 static bool gotFood=false,gotWater=false,gotRope=false,gotCompass=false, transferred=false, sleptToday=false, rainCollected=false;
 static char message[100]="";
@@ -172,11 +175,11 @@ static void draw_boat_view(void){
 static void draw_top(void){
  C2D_TargetClear(top,C(5,14,25,255));C2D_SceneBegin(top);
  if(phase==INTRO){
-   sky(false);horizon_ship();panel(25,31,350,177);
-   text(48,48,.82f,C(255,230,185,255),"DONT BE AWAKE");
-   text(48,77,.82f,C(255,230,185,255),"WITH THE FISCHES");
-   text(59,130,.5f,C(220,230,215,255),"DEIN SCHIFF VERLAESST DEN HAFEN");
-   text(79,171,.5f,C(255,230,185,255),"A DRUECKEN ZUM START");
+   sky(true);horizon_ship();panel(18,28,364,184);
+   text(43,52,.88f,C(255,230,185,255),"DONT BE AWAKE");
+   text(56,83,.88f,C(255,230,185,255),"WITH THE FISCHES");
+   text(83,137,.52f,C(220,230,215,255),"EINE REISE AUF OFFENER SEE");
+   text(91,174,.50f,C(255,230,185,255),menuHelp?"STEUERUNG UNTEN LESEN":"NEUES SPIEL AUSWAEHLEN");
  }else if(phase==SHIP){
    draw_ship_view();panel(9,8,382,27);
    text(20,17,.48f,C(255,239,213,255),"DAS GROSSE SCHIFF  |  SAMMLE DEINE AUSRUESTUNG");
@@ -186,9 +189,10 @@ static void draw_top(void){
    if(area==2){R(151,91,30,23,C(112,169,170,255));}
    panel(92,207,216,24);text(106,214,.43f,C(255,236,205,255),"PFEILE: UMSCHAUEN / GEHEN   A: NEHMEN");
  }else if(phase==BOAT){
-   draw_boat_view();panel(9,8,382,28);
+   draw_boat_view();panel(9,8,382,53);
    char s[80];snprintf(s,sizeof(s),"TAG %d  %02d:00   HUNGER %d  DURST %d",day,hour,hunger,thirst);
-   text(20,17,.5f,C(255,239,213,255),s);
+   text(18,15,.46f,C(255,239,213,255),s);
+   for(int i=0;i<3;i++){int x=20+i*124;text(x,34,.36f,C(255,232,205,255),i==0?"ENERGIE 1":i==1?"ENERGIE 2":"ENERGIE 3");R(x,45,100,7,C(39,55,62,255));R(x,45,energy[i],7,energy[i]>40?C(102,190,147,255):C(211,105,91,255));}
    if(messageFrames>0){panel(35,72,330,31);text(47,83,.48f,C(255,240,212,255),message);}
    panel(7,174,298,53);
    button(8,177,72,"DECK",room==0);button(82,177,72,"KUECHE",room==1);button(156,177,72,"OBERDECK",room==2);button(230,177,72,"BETT",room==3);
@@ -205,7 +209,9 @@ static void draw_top(void){
 }
 static void draw_bottom(void){
  C2D_TargetClear(bottom,C(8,18,28,255));C2D_SceneBegin(bottom);
- if(phase==INTRO){panel(13,16,294,208);text(28,30,.62f,C(255,232,187,255),"DEIN ABENTEUER");text(28,68,.47f,C(214,225,216,255),"Du bist auf einem grossen Schiff.");text(28,91,.47f,C(214,225,216,255),"Es bleibt nicht dein Zuhause.");text(28,121,.47f,C(214,225,216,255),"Sammle Wasser, Essen und ein Seil.");text(28,144,.47f,C(214,225,216,255),"Dann erreichst du das kleine Segelboot.");button(47,178,225,"LOS GEHTS",true);}
+ if(phase==INTRO){panel(10,10,300,220);
+   if(!menuHelp){text(25,23,.65f,C(255,232,187,255),"HAUPTMENUE");button(38,65,244,"NEUES SPIEL",menuChoice==0);button(38,105,244,"STEUERUNG",menuChoice==1);button(38,145,244,"INFO",menuChoice==2);text(25,197,.40f,C(185,213,207,255),"OBEN / UNTEN WAEHLEN - A BESTAETIGEN");}
+   else{text(25,23,.65f,C(255,232,187,255),"STEUERUNG");text(25,64,.48f,C(225,231,217,255),"A: AKTION / AUSWAHL");text(25,91,.48f,C(225,231,217,255),"B: ZURUECK / TRINKEN");text(25,118,.48f,C(225,231,217,255),"LINKS / RECHTS: RAUM WECHSELN");text(25,145,.48f,C(225,231,217,255),"TOUCH: BEREICHE AUSWAEHLEN");button(38,178,244,"ZURUECK",true);}}
  else if(phase==SHIP){
    panel(8,8,304,224);text(20,17,.59f,C(255,232,187,255),"DEINE AUFGABE");
    text(20,48,.47f,C(225,231,217,255),"Finde die Dinge auf dem Schiff:");
@@ -248,8 +254,8 @@ static void tick_boat(void){
  hunger=clamp(hunger-3,0,100);
  thirst=clamp(thirst-4,0,100);
  if(hour>=24){hour=6;day++;sleptToday=false;rainCollected=false;weather=rand()%3;if(plants>0){plantDays++;if(plantDays>=2){food++;plants--;plantDays=0;say("Deine Pflanze ist gewachsen. Du hast Essen!");}}}
- if(hunger<25||thirst<25)stamina=clamp(stamina-5,0,100);
- if(hunger<=0||thirst<=0||stamina<=0)phase=ENDING;
+ if(hunger<25||thirst<25){for(int i=0;i<3;i++)energy[i]=clamp(energy[i]-5,0,100);}
+ if(hunger<=0||thirst<=0||energy[0]<=0||energy[1]<=0||energy[2]<=0)phase=ENDING;
 }
 int main(int argc,char **argv){
  (void)argc;(void)argv;gfxInitDefault();C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);C2D_Init(12000);C2D_Prepare();
@@ -257,7 +263,7 @@ int main(int argc,char **argv){
  srand((unsigned)osGetTime());
  while(aptMainLoop()){
   hidScanInput();u32 down=hidKeysDown();u32 held=hidKeysHeld();touchPosition t;hidTouchRead(&t);bool touched=(down&KEY_TOUCH)!=0;
-  if(phase==INTRO){if((down&KEY_A)||touched){phase=SHIP;area=0;say("Erkunde das grosse Schiff. Sammle vier wichtige Dinge.");}}
+  if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;say("Erkunde das grosse Schiff. Sammle vier wichtige Dinge.");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;say("Erkunde das grosse Schiff. Sammle vier wichtige Dinge.");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
   else if(phase==SHIP){
    if(down&KEY_LEFT)area=(area+2)%3;
    if(down&KEY_RIGHT)area=(area+1)%3;
@@ -297,13 +303,13 @@ int main(int argc,char **argv){
      else if(tap(t,230,177,72,45))room=3;
    }
   }else if(phase==NIGHT){if((down&KEY_A)||touched){
-   day++;hour=6;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);stamina=clamp(stamina+30,0,100);
+   day++;hour=6;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
    if(nightEvent<50)say("Eine ruhige Nacht. Du bist ausgeruht.");
-   else if(nightEvent<78){water=clamp(water-1,0,8);stamina=clamp(stamina-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
+   else if(nightEvent<78){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
    else{food++;say("GUTES ZEICHEN: Treibgut mit Essen ist am Boot!");}
    rainCollected=false;weather=rand()%3;phase=BOAT;
  }}
-  else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;day=1;hunger=thirst=stamina=100;}}
+  else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;day=1;hunger=thirst=100;energy[0]=energy[1]=energy[2]=100;menuChoice=0;menuHelp=false;}}
   if(messageFrames>0)messageFrames--;if(fishAnim>0)fishAnim--;sway+=.04f;frame++;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);draw_top();draw_bottom();C3D_FrameEnd(0);
  }
