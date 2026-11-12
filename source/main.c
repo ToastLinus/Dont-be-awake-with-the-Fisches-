@@ -36,6 +36,8 @@ static int frameNo = 0;
 static float wave = 0.0f;
 static int roomToastFrames = 0;
 static int actionToastFrames = 0;
+static int actionAnimFrames = 0;
+static int actionAnimKind = 0;
 static char roomToast[32] = "AUSSENDECK";
 static int menuChoice = 0;
 static int characterChoice = 0;
@@ -115,6 +117,7 @@ static void change_room(int dir){
     enter_room((Room)r);
 }
 static void do_fish(void){
+    actionAnimKind=1; actionAnimFrames=90;
     if(g.bait>0)g.bait--;
     int chance=(g.difficulty==DIFF_HARD)?55:75;
     if(rand()%100<chance){g.fish++;say("Petri Heil! Ein Fisch ist im Korb.");}
@@ -122,12 +125,14 @@ static void do_fish(void){
     g.energy=clampi(g.energy-7,0,100);
 }
 static void do_kitchen(void){
+    actionAnimKind=2; actionAnimFrames=90;
     if(g.fish>0){g.fish--;g.hunger=clampi(g.hunger+28,0,100);g.health=clampi(g.health+3,0,100);say("Frischer Fisch! Du fuehlst dich gestaerkt.");}
     else if(g.crops>0){g.crops--;g.hunger=clampi(g.hunger+20,0,100);say("Du bereitest eine Mahlzeit aus deinem Garten zu.");}
     else if(g.meals>0){g.meals--;g.hunger=clampi(g.hunger+24,0,100);say("Eine Konservenmahlzeit. Nicht edel, aber gut.");}
     else say("Die Vorratskiste ist leer. Geh angeln oder pflanze etwas an.");
 }
 static void do_roof(void){
+    actionAnimKind=3; actionAnimFrames=90;
     if(g.rain>0){g.water=clampi(g.water+g.rain,0,99);g.rain=0;say("Regenwasser in die Tanks gefuellt.");}
     else if(g.seeds>0){g.seeds--;g.plants++;say("Samen eingepflanzt. Mit etwas Wasser wachsen sie.");}
     else if(g.plants>0 && g.water>0){g.plants--;g.water--;g.crops+=2;say("Deine Pflanzen sind gewachsen! Zwei Ernten gesammelt.");}
@@ -138,6 +143,7 @@ static void do_drink(void){
     else say("Kein Trinkwasser mehr. Auf dem Oberdeck kannst du Regen sammeln.");
 }
 static void do_sleep(void){
+    actionAnimKind=4; actionAnimFrames=90;
     if(g.energy<100)g.energy=clampi(g.energy+55,0,100);
     g.day++;
     g.hunger=clampi(g.hunger-7,0,100);
@@ -348,6 +354,29 @@ static void draw_top(void){
             panel(45,78,310,25);
             text(57,85,0.43f,C(245,239,211,255),g.message);
         }
+        /* Short, unmistakable visual feedback for the action just performed. */
+        if(actionAnimFrames>0){
+            if(actionAnimKind==1){
+                float fx=195.0f+sinf((90-actionAnimFrames)*0.11f)*54.0f;
+                float fy=165.0f-fabsf(sinf((90-actionAnimFrames)*0.08f))*25.0f;
+                circle(fx,fy,2.4f,7,C(159,211,166,255));
+                rect(fx-10,fy-2,2.5f,20,4,C(159,211,166,255));
+                circle(fx+9,fy-2,2.6f,2,C(20,39,45,255));
+            }else if(actionAnimKind==2){
+                circle(200,166,2.4f,19,C(229,176,105,255));
+                circle(200,164,2.5f,13,C(79,112,75,255));
+                for(int i=0;i<3;i++)circle(190+i*10,139-(float)((frameNo/4+i*5)%17),2.3f,2,C(242,235,211,190));
+            }else if(actionAnimKind==3){
+                rect(196,157,2.4f,5,25,C(99,151,79,255));
+                circle(188,153,2.5f,8,C(128,196,103,255));
+                circle(209,149,2.5f,9,C(143,207,112,255));
+                circle(199,140,2.6f,7,C(177,222,126,255));
+            }else if(actionAnimKind==4){
+                circle(200,112,2.4f,19,C(224,225,189,255));
+                circle(207,106,2.5f,17,C(27,35,48,255));
+                for(int i=0;i<5;i++)circle(150+i*24,91+(i%2)*17,2.4f,2,C(229,232,196,230));
+            }
+        }
         const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?"A  ESSEN":(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
         panel(142,207,116,24);
         text(153,213,0.42f,C(191,239,195,255),action);
@@ -491,6 +520,7 @@ int main(int argc,char **argv){
         }
         if(roomToastFrames>0)roomToastFrames--;
         if(actionToastFrames>0)actionToastFrames--;
+        if(actionAnimFrames>0)actionAnimFrames--;
         wave+=0.35f;frameNo++;
         C2D_TextBufClear(textBuffer);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
