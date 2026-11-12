@@ -34,6 +34,9 @@ static C3D_RenderTarget *topTarget, *bottomTarget;
 static C2D_TextBuf textBuffer;
 static int frameNo = 0;
 static float wave = 0.0f;
+static int roomToastFrames = 0;
+static int actionToastFrames = 0;
+static char roomToast[32] = "AUSSENDECK";
 static int menuChoice = 0;
 static int characterChoice = 0;
 static int nameChoice = 0;
@@ -80,7 +83,14 @@ static void button(float x,float y,float w,float h,const char *label,bool select
     rect(x+2,y+2,1.2f,w-4,2,selected?C(180,224,190,255):C(83,119,128,255));
     text(x+9,y+8,0.52f,C(250,242,220,255),label);
 }
-static void say(const char *s){ snprintf(g.message,sizeof(g.message),"%s",s); }
+static void say(const char *s){ snprintf(g.message,sizeof(g.message),"%s",s); actionToastFrames = 105; }
+static void enter_room(Room room){
+    g.room=room;
+    const char *labels[]={"AUSSENDECK","KUECHE","GARTEN","SCHLAFZIMMER"};
+    snprintf(roomToast,sizeof(roomToast),"%s",labels[(int)room]);
+    roomToastFrames=120;
+    actionToastFrames=0;
+}
 static int clampi(int v,int lo,int hi){ return v<lo?lo:(v>hi?hi:v); }
 
 static void reset_game(void){
@@ -92,6 +102,7 @@ static void reset_game(void){
     g.day=1; g.hunger=85; g.thirst=85; g.energy=90; g.health=100; g.fear=5;
     g.meals=2; g.water=2; g.seeds=2; g.wood=2; g.bait=2;
     g.hasLantern=true; g.room=ROOM_DECK; g.firstRun=true;
+    enter_room(ROOM_DECK);
     if(g.difficulty==DIFF_EASY){g.hunger=100;g.thirst=100;g.meals=4;g.water=4;g.health=100;}
     if(g.difficulty==DIFF_HARD){g.hunger=72;g.thirst=72;g.meals=1;g.water=1;g.health=85;}
     say("Dein erster Tag auf See. Erkunde das Boot!");
@@ -101,11 +112,7 @@ static void change_room(int dir){
     int r=(int)g.room+dir;
     if(r<0) r=ROOM_COUNT-1;
     if(r>=ROOM_COUNT) r=0;
-    g.room=(Room)r;
-    if(g.room==ROOM_DECK)say("Frische Seeluft. Zeit zum Angeln!");
-    if(g.room==ROOM_KITCHEN)say("In der Kueche kannst du Vorrate zubereiten.");
-    if(g.room==ROOM_ROOF)say("Hier wachsen deine kleinen Dachgarten-Pflanzen.");
-    if(g.room==ROOM_BEDROOM)say("Im Bett kannst du bis zum naechsten Tag schlafen.");
+    enter_room((Room)r);
 }
 static void do_fish(void){
     if(g.bait>0)g.bait--;
@@ -234,14 +241,20 @@ static void draw_room_scene(void){
     draw_sea();
     if(g.room==ROOM_DECK){
         draw_boat();
-        text(18,12,0.65f,C(255,239,205,255),"AUSSENDECK");
+        
         /* fishing rod, bucket and rope details */
         rect(285,91,1.8f,3,47,C(93,65,43,255));
         rect(287,91,1.8f,36,2,C(197,171,126,255));
         circle(310,177,1.8f,12,C(48,91,99,255));
         circle(310,177,1.9f,8,C(18,49,61,255));
+        /* Animated bobber, ripples and occasional fish splash. */
+        float bobY=177.0f+sinf(frameNo*0.12f)*3.0f;
+        circle(318,bobY,1.9f,5,C(242,113,83,255));
+        rect(317,143,1.8f,1,34,C(215,203,174,210));
+        for(int k=0;k<3;k++)rect(285+k*10,190+(k%2)*4,1.8f,7,2,C(100,183,194,190));
+        if((frameNo%180)<24){circle(343,176,1.8f,5,C(181,211,178,255));rect(340,170,1.8f,10,4,C(181,211,178,255));}
         draw_captain(205,157);
-        text(20,211,0.48f,C(244,223,186,255),"Angeln und Vorrate sammeln");
+        
     }else if(g.room==ROOM_KITCHEN){
         rect(0,0,0.8f,TOP_W,240,C(32,47,55,255));
         rect(0,178,0.9f,TOP_W,62,C(89,63,47,255));
@@ -252,12 +265,15 @@ static void draw_room_scene(void){
         rect(211,105,1.2f,137,69,C(68,76,70,255));
         rect(224,116,1.3f,111,12,C(183,138,86,255));
         for(int i=0;i<3;i++)circle(244+i*29,145,1.5f,8,C(201,91+i*25,63,255));
+        /* Warm stove glow and rising steam make the kitchen feel alive. */
+        for(int i=0;i<3;i++){float flick=4.0f+sinf(frameNo*0.18f+i)*2.0f;circle(244+i*29,132-flick,1.7f,3,C(255,170,82,210));}
+        for(int i=0;i<3;i++)circle(100+i*12,94-(float)((frameNo/5+i*7)%18),1.6f,2,C(210,225,215,100));
         rect(79,50,1.4f,68,24,C(22,37,43,255));
         circle(95,62,1.5f,6,C(255,191,98,255));
         circle(111,62,1.5f,6,C(255,191,98,255));
-        text(18,12,0.65f,C(255,239,205,255),"KUECHE");
+        
         draw_captain(185,160);
-        text(24,211,0.48f,C(244,223,186,255),"Fisch, Pflanzen oder Konserven essen");
+        
     }else if(g.room==ROOM_ROOF){
         rect(0,0,0.8f,TOP_W,240,C(16,51,65,255));
         rect(0,0,0.9f,TOP_W,85,C(36,75,91,255));
@@ -275,9 +291,9 @@ static void draw_room_scene(void){
                 circle(61+i*65+j*12,155,1.6f,4,C(117,185,91,255));
             }
         }
-        text(18,12,0.65f,C(255,239,205,255),"OBERDECK-GARTEN");
+        
         draw_captain(206,165);
-        text(24,211,0.48f,C(244,223,186,255),"Regen sammeln und Pflanzen anbauen");
+        
     }else{
         rect(0,0,0.8f,TOP_W,240,C(27,35,48,255));
         rect(0,178,0.9f,TOP_W,62,C(71,50,47,255));
@@ -290,9 +306,10 @@ static void draw_room_scene(void){
         rect(79,75,1.4f,59,43,C(89,142,148,255));
         circle(329,62,1.5f,12,C(255,193,108,70));
         circle(329,62,1.6f,5,C(255,204,120,255));
-        text(18,12,0.65f,C(255,239,205,255),"SCHLAFZIMMER");
+        for(int i=0;i<7;i++){float tw=1.0f+(float)((frameNo/12+i*3)%3);circle(35+i*51,42+(i%3)*19,1.7f,tw,C(220,230,204,180));}
+        
         draw_captain(183,166);
-        text(24,211,0.48f,C(244,223,186,255),"Ausruhen und den Tag ueberspringen");
+        
     }
 }
 static void draw_top(void){
@@ -322,6 +339,18 @@ static void draw_top(void){
             circle(178,183,2.0f,6,C(196,158,118,255));
             circle(185,179,2.0f,5,C(199,174,139,255));
         }
+        /* Room names and action feedback are brief overlays, not permanent narration. */
+        if(roomToastFrames>0){
+            panel(137,7,126,22);
+            text(148,13,0.48f,C(183,245,192,255),roomToast);
+        }
+        if(actionToastFrames>0){
+            panel(45,78,310,25);
+            text(57,85,0.43f,C(245,239,211,255),g.message);
+        }
+        const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?"A  ESSEN":(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
+        panel(142,207,116,24);
+        text(153,213,0.42f,C(191,239,195,255),action);
     }else if(screen==SCREEN_EVENT){
         draw_room_scene();
         panel(25,45,350,148);
@@ -382,7 +411,6 @@ static void draw_bottom(void){
         text(18,128,0.48f,C(255,224,176,255),"VORRAETE");
         snprintf(b,sizeof(b),"Fisch %d  Essen %d  Wasser %d",g.fish,g.meals,g.water);text(18,147,0.43f,C(218,226,219,255),b);
         snprintf(b,sizeof(b),"Samen %d  Ernte %d  Regen %d",g.seeds,g.crops,g.rain);text(18,164,0.43f,C(218,226,219,255),b);
-        text(18,183,0.42f,C(184,207,207,255),g.message);
         small_room_button(8,"DECK",g.room==ROOM_DECK);
         small_room_button(86,"KUECHE",g.room==ROOM_KITCHEN);
         small_room_button(164,"GARTEN",g.room==ROOM_ROOF);
@@ -449,10 +477,10 @@ int main(int argc,char **argv){
             if(down&KEY_A)interact();
             if(down&KEY_B)do_drink();
             if(tapped){
-                if(touch_in(touch,8,200,72,27))g.room=ROOM_DECK;
-                else if(touch_in(touch,86,200,72,27))g.room=ROOM_KITCHEN;
-                else if(touch_in(touch,164,200,72,27))g.room=ROOM_ROOF;
-                else if(touch_in(touch,242,200,72,27))g.room=ROOM_BEDROOM;
+                if(touch_in(touch,8,200,72,27))enter_room(ROOM_DECK);
+                else if(touch_in(touch,86,200,72,27))enter_room(ROOM_KITCHEN);
+                else if(touch_in(touch,164,200,72,27))enter_room(ROOM_ROOF);
+                else if(touch_in(touch,242,200,72,27))enter_room(ROOM_BEDROOM);
             }
             if(down&KEY_X){if(g.room==ROOM_BEDROOM)do_sleep();else say("Zum Schlafen ins Schlafzimmer gehen.");}
             if((frameNo%180)==0)update_stats();
@@ -461,6 +489,8 @@ int main(int argc,char **argv){
         }else if(screen==SCREEN_END){
             if((down&KEY_A)||tapped){screen=SCREEN_TITLE;g.difficulty=DIFF_NORMAL;}
         }
+        if(roomToastFrames>0)roomToastFrames--;
+        if(actionToastFrames>0)actionToastFrames--;
         wave+=0.35f;frameNo++;
         C2D_TextBufClear(textBuffer);
         C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
