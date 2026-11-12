@@ -21,6 +21,7 @@ static float sway=0;
 static u32 C(int r,int g,int b,int a){return C2D_Color32(r,g,b,a);}
 static void R(float x,float y,float w,float h,u32 c){C2D_DrawRectSolid(x,y,0.5f,w,h,c);}
 static void O(float x,float y,float r,u32 c){C2D_DrawCircleSolid(x,y,0.5f,r,c);}
+static void rect(float x,float y,float z,float w,float h,u32 c){(void)z;R(x,y,w,h,c);}
 static const unsigned char font5x7[36][7] = {
  {14,17,17,31,17,17,17},{30,17,17,30,17,17,30},{14,17,16,16,16,17,14},
  {30,17,17,17,17,17,30},{31,16,16,30,16,16,31},{31,16,16,30,16,16,16},
