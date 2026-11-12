@@ -38,7 +38,6 @@ static int menuChoice = 0;
 static int characterChoice = 0;
 static int nameChoice = 0;
 static const char *names[] = {"JACK", "ALEX", "MORGAN", "SAM"};
-static const char *roomNames[] = {"DECK", "KUECHE", "OBERDECK", "SCHLAFZIMMER"};
 static const char *events[] = {
     "Drei Klopfer an der Bordwand.",
     "Ein Licht blinkt weit draussen.",
@@ -100,7 +99,8 @@ static void reset_game(void){
 static void begin_game(void){ reset_game(); screen=SCREEN_GAME; }
 static void change_room(int dir){
     int r=(int)g.room+dir;
-    if(r<0)r=ROOM_COUNT-1;if(r>=ROOM_COUNT)r=0;
+    if(r<0) r=ROOM_COUNT-1;
+    if(r>=ROOM_COUNT) r=0;
     g.room=(Room)r;
     if(g.room==ROOM_DECK)say("Frische Seeluft. Zeit zum Angeln!");
     if(g.room==ROOM_KITCHEN)say("In der Kueche kannst du Vorrate zubereiten.");
@@ -185,7 +185,7 @@ static void draw_sea(void){
     circle(325,42,0.2f,20,C(222,218,181,255));
     circle(333,35,0.3f,18,C(20,47,69,255));
     for(int i=0;i<35;i++){
-        float x=(float)((i*79+frameNo*0.11f*(i%3+1))%410);
+        float x=fmodf((float)i*79.0f+frameNo*0.11f*(i%3+1),410.0f);
         float y=(float)((i*37+13)%78);
         circle(x,y,0.4f,(i%5==0)?1.3f:0.7f,C(204,218,213,180));
     }
@@ -262,7 +262,7 @@ static void draw_room_scene(void){
         rect(0,0,0.8f,TOP_W,240,C(16,51,65,255));
         rect(0,0,0.9f,TOP_W,85,C(36,75,91,255));
         for(int i=0;i<24;i++){
-            float x=(i*53+frameNo*0.5f)%410;
+            float x=fmodf((float)i*53.0f+frameNo*0.5f,410.0f);
             rect(x,(i*31)%82,1.0f,2,11,C(133,194,205,130));
         }
         rect(22,133,1.1f,355,68,C(100,66,46,255));
@@ -337,7 +337,6 @@ static void draw_top(void){
         text(76,119,0.55f,C(246,235,215,255),"Du hast bis Tag ueberlebt:");
         char b[32];snprintf(b,sizeof(b),"TAG %d",g.day);text(162,145,0.62f,C(255,232,187,255),b);
     }
-    C2D_SceneEnd();
 }
 static void statbar(float x,float y,const char *label,int v,u32 fill){
     text(x,y,0.43f,C(220,229,220,255),label);
