@@ -318,6 +318,7 @@ static void draw_captain(float x,float y){
     rect(x+2,y+10,2.2f,4,9,C(41,43,49,255));
 }
 static void draw_room_scene(void){
+    float targetX,targetY;room_target(&targetX,&targetY);
     draw_sea();
     if(g.room==ROOM_DECK){
         draw_boat();
@@ -333,6 +334,14 @@ static void draw_room_scene(void){
         rect(317,143,1.8f,1,34,C(215,203,174,210));
         for(int k=0;k<3;k++)rect(285+k*10,190+(k%2)*4,1.8f,7,2,C(100,183,194,190));
         if((frameNo%180)<24){circle(343,176,1.8f,5,C(181,211,178,255));rect(340,170,1.8f,10,4,C(181,211,178,255));}
+        /* The fish basket is a real, visible prop; its contents match the inventory. */
+        rect(292,170,1.8f,34,17,C(112,76,48,255));
+        rect(295,173,1.9f,28,3,C(183,137,83,255));
+        for(int i=0;i<g.fish && i<3;i++){
+            circle(301+i*9,168,2.0f,4,C(166,193,174,255));
+            rect(298+i*9,167,2.0f,7,2,C(166,193,174,255));
+            circle(303+i*9,167,2.1f,1,C(24,42,47,255));
+        }
         draw_captain(playerX,playerY);
         
     }else if(g.room==ROOM_KITCHEN){
@@ -391,6 +400,10 @@ static void draw_room_scene(void){
         draw_captain(playerX,playerY);
         
     }
+    /* A small pulsing marker makes the room's usable object easy to spot. */
+    float pulse=2.0f+sinf(frameNo*0.10f)*1.0f;
+    circle(targetX,targetY-18,2.7f,pulse+3.0f,C(255,207,119,65));
+    circle(targetX,targetY-18,2.8f,pulse,C(255,218,147,220));
 }
 static void draw_top(void){
     C2D_TargetClear(topTarget,C(5,13,24,255));
@@ -584,6 +597,7 @@ int main(int argc,char **argv){
     while(aptMainLoop()){
         hidScanInput();
         u32 down=hidKeysDown();
+        u32 held=hidKeysHeld();
         touchPosition touch;hidTouchRead(&touch);
         bool tapped=(down&KEY_TOUCH)!=0;
         if(screen==SCREEN_TITLE){
@@ -612,7 +626,7 @@ int main(int argc,char **argv){
             if(down&KEY_A)begin_game();
             if(down&KEY_B)screen=SCREEN_DIFFICULTY;
         }else if(screen==SCREEN_GAME){
-            move_player(down);
+            move_player(held|down);
             if(down&KEY_A)interact();
             if(down&KEY_B)do_drink();
             if(tapped){
