@@ -2,7 +2,7 @@ name: Build Nintendo 3DS homebrew
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/ship-survival-rebuild]
   pull_request:
   workflow_dispatch:
 
@@ -85,7 +85,7 @@ jobs:
           if-no-files-found: error
 
       - name: Remove older CIA assets from latest release
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
