@@ -91,11 +91,10 @@ static const unsigned char *glyph(char ch){
     static const unsigned char question[7]={14,17,1,2,4,0,4};
     static const unsigned char plus[7]={0,4,4,31,4,4,0};
     static const unsigned char slash[7]={1,2,2,4,8,8,16};
-    static const unsigned char apost[7]={4,4,8,0,0,0,0};
     if(ch>='a'&&ch<='z')ch=(char)(ch-'a'+'A');
     if(ch>='A'&&ch<='Z')return font5x7[ch-'A'];
     if(ch>='0'&&ch<='9')return font5x7[26+ch-'0'];
-    switch(ch){case '-':case '_':return dash;case '.':return dot;case ':':return colon;case '!':return bang;case '?':return question;case '+':return plus;case '/':return slash;case '\\'':return apost;case ' ':return blank;default:return blank;}
+    switch(ch){case '-':case '_':return dash;case '.':return dot;case ':':return colon;case '!':return bang;case '?':return question;case '+':return plus;case '/':return slash;case ' ':return blank;default:return blank;}
 }
 static void text(float x,float y,float s,u32 color,const char *str){
     float cell=s*2.4f;
