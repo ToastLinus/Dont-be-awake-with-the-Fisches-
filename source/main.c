@@ -16,7 +16,7 @@ static C3D_RenderTarget *top,*bottom;
 static int frame=0, area=0, facing=0, food=0, water=0, rope=0, fish=0, day=1, hunger=100, thirst=100, stamina=100, caught=0;
 static bool gotFood=false,gotWater=false,gotRope=false,gotCompass=false, transferred=false;
 static char message[100]="";
-static int messageFrames=0;
+static int messageFrames=0, fishAnim=0;
 static float sway=0;
 static u32 C(int r,int g,int b,int a){return C2D_Color32(r,g,b,a);}
 static void R(float x,float y,float w,float h,u32 c){C2D_DrawRectSolid(x,y,0.5f,w,h,c);}
@@ -123,10 +123,24 @@ static void draw_boat_view(void){
  /* sail */
  R(204,43,96,82,C(218,211,182,255));R(207,48,86,70,C(185,192,176,255));
  for(int i=0;i<4;i++)R(212+i*20,52,1,59,C(143,151,140,255));
+ /* clearly visible first-person fishing rod, line and bobber */
+ R(301,153,4,48,C(105,69,43,255));R(292,153,12,3,C(185,148,102,255));
+ R(278,124,2,37,C(211,198,167,220));
+ float bobberY=158.0f+sinf(frame*.13f)*3.0f;
+ O(278,bobberY,5,C(244,117,83,255));R(276,bobberY-1,4,2,C(246,232,208,255));
+ for(int k=0;k<3;k++)R(245+k*9,183+(k%2)*3,6,2,C(104,173,184,190));
+ if(fishAnim>0){
+   float jump=(90-fishAnim)/90.0f;
+   float fx=245.0f+jump*38.0f;
+   float fy=174.0f-fabsf(sinf(jump*3.14159f))*43.0f;
+   O(fx,fy,7,C(180,205,181,255));R(fx-9,fy-2,18,4,C(180,205,181,255));
+   O(fx+4,fy-3,1.5f,C(20,38,43,255));
+   for(int k=0;k<3;k++)O(238+k*8,183+k%2*4,2,C(159,211,215,210));
+ }
  /* small supply crate */
  R(160,176,75,35,C(113,74,43,255));R(166,170,63,8,C(166,120,69,255));
  R(194,180,4,25,C(68,47,35,255));
- if(caught){O(187,166,8,C(177,202,180,255));R(180,164,15,4,C(177,202,180,255));}
+ if(caught && fishAnim==0){O(187,166,8,C(177,202,180,255));R(180,164,15,4,C(177,202,180,255));}
  R(196,116,8,2,C(241,231,207,210));R(199,113,2,8,C(241,231,207,210));
 }
 static void draw_top(void){
@@ -220,13 +234,13 @@ int main(int argc,char **argv){
    if(down&KEY_A)interact_ship();
    if(touched){if(tap(t,47,178,225,27)){interact_ship();}}
   }else if(phase==BOAT){
-   if(down&KEY_A){if(rand()%100<68){fish++;caught=1;say("Ein Fisch! Du hast etwas zu essen.");}else{caught=0;say("Kein Biss. Versuch es spaeter noch einmal.");}}
+   if(down&KEY_A){fishAnim=90;if(rand()%100<68){fish++;caught=1;say("Ein Fisch beisst an! Schau auf den Fang.");}else{caught=0;say("Kein Biss. Versuch es spaeter noch einmal.");}}
    if(down&KEY_B){if(food>0&&hunger<90){food--;hunger=clamp(hunger+35,0,100);say("Du hast etwas gegessen.");}else if(water>0&&thirst<90){water--;thirst=clamp(thirst+38,0,100);say("Du hast Wasser getrunken.");}else if(fish>0){fish--;hunger=clamp(hunger+30,0,100);say("Du hast einen Fisch gegessen.");}else say("Deine Vorräte sind fast leer.");}
    if(down&KEY_X){phase=NIGHT;}
    if((frame%240)==0)tick_boat();
   }else if(phase==NIGHT){if((down&KEY_A)||touched){day++;hunger=clamp(hunger-12,0,100);thirst=clamp(thirst-15,0,100);stamina=clamp(stamina+25,0,100);phase=BOAT;say("Ein neuer Tag auf dem Meer.");}}
   else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;day=1;hunger=thirst=stamina=100;}}
-  if(messageFrames>0)messageFrames--;sway+=.04f;frame++;
+  if(messageFrames>0)messageFrames--;if(fishAnim>0)fishAnim--;sway+=.04f;frame++;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);draw_top();draw_bottom();C3D_FrameEnd(0);
  }
  C2D_Fini();C3D_Fini();gfxExit();return 0;
