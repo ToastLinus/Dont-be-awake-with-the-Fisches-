@@ -5,7 +5,7 @@ An original Nintendo 3DS survival-horror prototype about Jackstone, an isolated 
 ## Current gameplay
 
 - **60-second preparation phase:** explore the deck and collect supplies before the first night.
-- **Survival systems:** hunger, thirst, fatigue, fear, food, water, wood, signal flares, a key and a lantern.
+- **Survival systems:** hunger, thirst, fatigue, fear, food, water, wood, an emergency beacon, a key and a lantern.
 - **Night events:** nine different atmospheric events, including strange knocks, distant lights, heavy fog, a storm and unexplained movement under the boat.
 - **Dual-screen layout:** the top screen renders the animated boat scene; the lower screen displays status, supplies and controls.
 - **Animation:** moving water, drifting highlights, a flickering lantern and a bobbing player character.
