@@ -13,13 +13,66 @@ jobs:
     steps:
       - name: Check out source
         uses: actions/checkout@v4
+
       - name: Install Nintendo 3DS libraries
-        run: dkp-pacman -Syyu --noconfirm 3ds-dev citro2d
-      - name: Build 3DSX
+        run: dkp-pacman -Sy --noconfirm 3ds-dev
+
+      - name: Build 3DSX and ELF
         run: make
-      - name: Upload homebrew artifact
+
+      - name: Create original icon and banner art
+        run: |
+          python3 - <<'PY'
+          import math, struct, zlib, wave
+          def png(path,w,h,pixel):
+              raw=b''.join(b'\x00'+bytes(sum((list(pixel(x,y)) for x in range(w)),[])) for y in range(h))
+              def chunk(t,d):
+                  return struct.pack('>I',len(d))+t+d+struct.pack('>I',zlib.crc32(t+d)&0xffffffff)
+              data=b'\x89PNG\r\n\x1a\n'+chunk(b'IHDR',struct.pack('>2I5B',w,h,8,2,0,0,0))+chunk(b'IDAT',zlib.compress(raw,9))+chunk(b'IEND',b'')
+              open(path,'wb').write(data)
+          def icon(x,y):
+              if y>34 and 7<x<41: return (78,58,44)
+              if 14<x<34 and 17<y<35: return (28,39,48)
+              if (x-34)**2+(y-10)**2<30: return (202,210,192)
+              if y<9 and x%7==0:return (220,225,220)
+              return (8,20,34)
+          def banner(x,y):
+              if y<66:
+                  if (x-205)**2+(y-27)**2<450:return (201,207,190)
+                  return (7,19,34)
+              if y<88:return (17,45,58)
+              if y<108:return (69,91,91)
+              if 34<x<224 and 89<y<118:return (73,53,43)
+              if 50<x<207 and 80<y<91:return (143,104,67)
+              if y>115:return (6,25,39)
+              return (14,34,48)
+          png('icon.png',48,48,icon)
+          png('banner.png',256,128,banner)
+          with wave.open('silence.wav','wb') as f:
+              f.setnchannels(2);f.setsampwidth(2);f.setframerate(44100);f.writeframes(b'\x00\x00\x00\x00'*44100)
+          PY
+
+      - name: Build bannertool and makerom
+        run: |
+          git clone --depth=1 --recurse-submodules https://github.com/diasurgical/bannertool.git /tmp/bannertool
+          make -C /tmp/bannertool
+          git clone --depth=1 --recurse-submodules https://github.com/3DSGuy/Project_CTR.git /tmp/Project_CTR
+          make -C /tmp/Project_CTR/makerom deps
+          make -C /tmp/Project_CTR/makerom
+
+      - name: Package installable CIA
+        run: |
+          /tmp/bannertool/output/linux-x86_64/bannertool makesmdh -s "Don't Be Awake" -l "Don't Be Awake with the Fisches - Survival Horror" -p "ToastLinus" -i icon.png -o fish-night.smdh
+          /tmp/bannertool/output/linux-x86_64/bannertool makebanner -i banner.png -a silence.wav -o fish-night.bnr
+          /tmp/Project_CTR/makerom/bin/makerom -f cia -o fish-night.cia -elf fish-night.elf -icon fish-night.smdh -banner fish-night.bnr -desc app:4 -target t -exefslogo -major 1 -minor 0 -micro 0
+          test -s fish-night.cia
+
+      - name: Upload Nintendo 3DS builds
         uses: actions/upload-artifact@v4
         with:
-          name: fish-night-3dsx
-          path: fish-night.3dsx
+          name: dont-be-awake-with-the-fisches-3ds
+          path: |
+            fish-night.3dsx
+            fish-night.cia
+            fish-night.smdh
           if-no-files-found: error
