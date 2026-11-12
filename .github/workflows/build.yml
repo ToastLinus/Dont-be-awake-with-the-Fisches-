@@ -65,7 +65,7 @@ jobs:
           test -x "$MAKEROM"
           "$BANNERTOOL" makesmdh -s "Don't Be Awake" -l "Don't Be Awake with the Fisches - Survival Horror" -p "ToastLinus" -i icon.png -o fish-night.smdh
           "$BANNERTOOL" makebanner -i banner.png -a silence.wav -o fish-night.bnr
-          "$MAKEROM" -f cia -o fish-night.cia -elf fish-night.elf -icon fish-night.smdh -banner fish-night.bnr -desc app:4 -target t -exefslogo -major 1 -minor 0 -micro 0
+          "$MAKEROM" -f cia -o fish-night.cia -elf fish-night.elf -rsf fish-night.rsf -icon fish-night.smdh -banner fish-night.bnr -desc app:4 -target t -exefslogo -major 1 -minor 0 -micro 0
           test -s fish-night.cia
 
       - name: Upload Nintendo 3DS builds
