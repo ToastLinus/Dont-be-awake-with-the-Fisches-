@@ -223,7 +223,7 @@ static void resolve_event(void){
         g.fear=clampi(g.fear-5,0,100);
     }else say("Eine ruhige Nacht. Das Meer war heute freundlich.");
     if(g.hunger<=0 || g.thirst<=0 || g.health<=0){screen=SCREEN_END;}
-    else {screen=SCREEN_GAME;g.room=ROOM_BEDROOM;}
+    else {screen=SCREEN_GAME;enter_room(ROOM_BEDROOM);}
 }
 static void room_target(float *x,float *y){
     if(g.room==ROOM_DECK){*x=300.0f;*y=125.0f;}
@@ -464,7 +464,7 @@ static void draw_top(void){
                 for(int i=0;i<5;i++)circle(150+i*24,91+(i%2)*17,2.4f,2,C(229,232,196,230));
             }
         }
-        const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?"A  ESSEN":(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
+        const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?(g.fish>0?"A  FISCH BRATEN":"A  ESSEN"):(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
         panel(142,207,116,24);
         text(153,213,0.42f,C(191,239,195,255),action);
         panel(88,178,224,20);
@@ -560,9 +560,14 @@ static void start_ambient_audio(void){
     for(int i=0;i<sampleCount;i++){
         float t=(float)i/(float)sampleRate;
         float swell=0.55f+0.45f*sinf(tau*0.22f*t);
-        float sea=sinf(tau*47.0f*t)*0.20f+sinf(tau*53.0f*t)*0.15f+sinf(tau*71.0f*t)*0.10f+sinf(tau*89.0f*t)*0.07f;
-        float hush=sinf(tau*2.0f*t)*0.08f+sinf(tau*3.0f*t)*0.05f;
-        float sample=(sea*swell+hush)*0.13f;
+        float sea=0.0f;
+        for(int k=0;k<24;k++){
+            float frequency=37.0f+(float)k*13.0f;
+            float phase=(float)((k*37)%97)*0.0647f;
+            sea+=sinf(tau*frequency*t+phase)*0.020f;
+        }
+        float hush=sinf(tau*2.0f*t)*0.025f+sinf(tau*3.0f*t)*0.018f;
+        float sample=(sea*swell+hush)*0.65f;
         if(sample>1.0f)sample=1.0f;if(sample< -1.0f)sample= -1.0f;
         ambientSamples[i]=(s16)(sample*32767.0f);
     }
@@ -570,7 +575,7 @@ static void start_ambient_audio(void){
     ambientWave.data_vaddr=ambientSamples;
     ambientWave.nsamples=sampleCount;
     ambientWave.looping=true;
-    float mix[12]={0.12f,0.12f,0,0,0,0,0,0,0,0,0,0};
+    float mix[12]={0.55f,0.55f,0,0,0,0,0,0,0,0,0,0};
     ndspChnReset(0);
     ndspChnSetRate(0,(float)sampleRate);
     ndspChnSetFormat(0,NDSP_FORMAT_MONO_PCM16);
