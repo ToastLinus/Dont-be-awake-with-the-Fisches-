@@ -14,9 +14,6 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Install Nintendo 3DS libraries
-        run: dkp-pacman -Sy --noconfirm 3ds-dev
-
       - name: Build 3DSX and ELF
         run: make
 
