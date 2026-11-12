@@ -14,7 +14,7 @@
 typedef enum { PHASE_PREP, PHASE_NIGHT, PHASE_EVENT, PHASE_END } Phase;
 typedef struct { float x,y; int kind; bool taken; const char *name; } Loot;
 typedef struct {
- int hunger, thirst, fatigue, fear, food, water, wood, flares;
+ int hunger, thirst, fatigue, fear, food, water, wood, beacons;
  int night, seconds, prep_left, event_left, event_id, collected;
  bool has_key, lantern, event_done;
  char message[100];
@@ -49,7 +49,7 @@ static void bar(float x,float y,float w,int v,u32 c){
 }
 static void init(void){
  memset(&g,0,sizeof(g));g.hunger=94;g.thirst=94;g.fatigue=12;g.fear=3;
- g.prep_left=60;g.night=1;g.food=0;g.water=0;g.flares=0;
+ g.prep_left=60;g.night=1;g.food=0;g.water=0;g.beacons=0;
  msg("60 Sekunden! Sammle Vorräte, bevor die Nacht beginnt.");
  last_second=osGetTime();
 }
@@ -65,7 +65,7 @@ static void take_item(void){
     case 0:g.food+=2;msg("Konserven gefunden: 2 Rationen.");break;
     case 1:g.water+=2;msg("Trinkwasser gefunden: 2 Flaschen.");break;
     case 2:g.wood+=2;msg("Trockene Bretter: Du kannst etwas reparieren.");break;
-    case 3:g.flares++;msg("Signallicht gefunden. Fuer spaeter aufheben!");break;
+    case 3:g.beacons++;msg("Notsender gefunden. Fuer spaeter aufheben!");break;
     case 4:g.has_key=true;msg("Ein kleiner Messingschluessel. Wozu gehoert er?");break;
     case 5:g.lantern=true;msg("Die alte Laterne funktioniert noch.");break;
    }return;
@@ -97,7 +97,7 @@ static void sleep_or_wait(void){
 static void use_supply(void){
  if(g.food>0 && g.hunger<90){g.food--;g.hunger+=28;if(g.hunger>100)g.hunger=100;msg("Du isst eine Ration. Das hilft.");}
  else if(g.water>0 && g.thirst<90){g.water--;g.thirst+=32;if(g.thirst>100)g.thirst=100;msg("Ein Schluck Wasser. Du kannst weiter.");}
- else if(g.flares>0 && phase!=PHASE_PREP){g.flares--;g.fear-=18;if(g.fear<0)g.fear=0;msg("Das Signallicht erhellt das Deck. Fuer einen Moment ist alles still.");}
+ else if(g.beacons>0 && phase!=PHASE_PREP){g.beacons--;g.fear-=18;if(g.fear<0)g.fear=0;msg("Der Notsender blinkt auf dem Deck. Fuer einen Moment ist alles still.");}
  else msg("Nichts Passendes im Inventar. A sammelt Gegenstaende ein.");
 }
 static void update_second(void){
@@ -215,7 +215,7 @@ static void draw_bottom(void){
  txt(12,124,0.48f,col(239,216,174,255),"VORRAETE");
  char b[80];snprintf(b,sizeof(b),"Essen %d   Wasser %d   Holz %d",g.food,g.water,g.wood);
  txt(12,143,0.43f,col(218,221,213,255),b);
- snprintf(b,sizeof(b),"Signallicht %d   Schluessel %s",g.flares,g.has_key?"JA":"NEIN");
+ snprintf(b,sizeof(b),"Notsender %d   Schluessel %s",g.beacons,g.has_key?"JA":"NEIN");
  txt(12,160,0.43f,col(218,221,213,255),b);
  txt(12,184,0.39f,col(229,190,139,255),g.message);
  txt(12,211,0.38f,col(153,172,183,255),"A Sammeln  Y Nutzen  X Ruhen  B Karte");
