@@ -42,6 +42,10 @@ static char roomToast[32] = "AUSSENDECK";
 static int menuChoice = 0;
 static int characterChoice = 0;
 static int nameChoice = 0;
+static float playerX = 205.0f, playerY = 190.0f;
+static ndspWaveBuf ambientWave;
+static s16 *ambientSamples = NULL;
+static bool audioReady = false;
 static const char *names[] = {"JACK", "ALEX", "MORGAN", "SAM"};
 static const char *events[] = {
     "Drei Klopfer an der Bordwand.",
@@ -129,6 +133,11 @@ static void button(float x,float y,float w,float h,const char *label,bool select
 static void say(const char *s){ snprintf(g.message,sizeof(g.message),"%s",s); actionToastFrames = 105; }
 static void enter_room(Room room){
     g.room=room;
+    /* Each room has its own entrance position; the D-pad moves the captain, not rooms. */
+    if(room==ROOM_DECK){playerX=205.0f;playerY=190.0f;}
+    else if(room==ROOM_KITCHEN){playerX=165.0f;playerY=190.0f;}
+    else if(room==ROOM_ROOF){playerX=205.0f;playerY=190.0f;}
+    else {playerX=270.0f;playerY=190.0f;}
     const char *labels[]={"AUSSENDECK","KUECHE","GARTEN","SCHLAFZIMMER"};
     snprintf(roomToast,sizeof(roomToast),"%s",labels[(int)room]);
     roomToastFrames=120;
@@ -167,7 +176,7 @@ static void do_fish(void){
 }
 static void do_kitchen(void){
     actionAnimKind=2; actionAnimFrames=90;
-    if(g.fish>0){g.fish--;g.hunger=clampi(g.hunger+28,0,100);g.health=clampi(g.health+3,0,100);say("Frischer Fisch! Du fuehlst dich gestaerkt.");}
+    if(g.fish>0){g.fish--;g.hunger=clampi(g.hunger+28,0,100);g.health=clampi(g.health+3,0,100);say("1 FISCH AUS DEM KORB GENOMMEN UND GEBRATEN!");}
     else if(g.crops>0){g.crops--;g.hunger=clampi(g.hunger+20,0,100);say("Du bereitest eine Mahlzeit aus deinem Garten zu.");}
     else if(g.meals>0){g.meals--;g.hunger=clampi(g.hunger+24,0,100);say("Eine Konservenmahlzeit. Nicht edel, aber gut.");}
     else say("Die Vorratskiste ist leer. Geh angeln oder pflanze etwas an.");
@@ -214,10 +223,37 @@ static void resolve_event(void){
         g.fear=clampi(g.fear-5,0,100);
     }else say("Eine ruhige Nacht. Das Meer war heute freundlich.");
     if(g.hunger<=0 || g.thirst<=0 || g.health<=0){screen=SCREEN_END;}
-    else {screen=SCREEN_GAME;g.room=ROOM_BEDROOM;}
+    else {screen=SCREEN_GAME;enter_room(ROOM_BEDROOM);}
+}
+static void room_target(float *x,float *y){
+    if(g.room==ROOM_DECK){*x=300.0f;*y=125.0f;}
+    else if(g.room==ROOM_KITCHEN){*x=270.0f;*y=145.0f;}
+    else if(g.room==ROOM_ROOF){*x=200.0f;*y=165.0f;}
+    else {*x=180.0f;*y=165.0f;}
+}
+static bool near_room_target(void){
+    float tx,ty;room_target(&tx,&ty);
+    float dx=playerX-tx,dy=playerY-ty;
+    return dx*dx+dy*dy<58.0f*58.0f;
+}
+static void move_player(u32 down){
+    const float speed=3.2f;
+    if(down&KEY_LEFT)playerX-=speed;
+    if(down&KEY_RIGHT)playerX+=speed;
+    if(down&KEY_UP)playerY-=speed;
+    if(down&KEY_DOWN)playerY+=speed;
+    playerX=fmaxf(24.0f,fminf(376.0f,playerX));
+    playerY=fmaxf(112.0f,fminf(205.0f,playerY));
 }
 static void interact(void){
     if(screen!=SCREEN_GAME)return;
+    if(!near_room_target()){
+        if(g.room==ROOM_DECK)say("GEH ZUM ANGELPLATZ UND DRUECKE A.");
+        else if(g.room==ROOM_KITCHEN)say("GEH ZUM HERD UND DRUECKE A.");
+        else if(g.room==ROOM_ROOF)say("GEH ZU DEN PFLANZEN UND DRUECKE A.");
+        else say("GEH ZUM BETT UND DRUECKE A.");
+        return;
+    }
     switch(g.room){
         case ROOM_DECK: do_fish();break;
         case ROOM_KITCHEN: do_kitchen();break;
@@ -285,6 +321,7 @@ static void draw_captain(float x,float y){
     rect(x+2,y+10,2.2f,4,9,C(41,43,49,255));
 }
 static void draw_room_scene(void){
+    float targetX,targetY;room_target(&targetX,&targetY);
     draw_sea();
     if(g.room==ROOM_DECK){
         draw_boat();
@@ -300,7 +337,15 @@ static void draw_room_scene(void){
         rect(317,143,1.8f,1,34,C(215,203,174,210));
         for(int k=0;k<3;k++)rect(285+k*10,190+(k%2)*4,1.8f,7,2,C(100,183,194,190));
         if((frameNo%180)<24){circle(343,176,1.8f,5,C(181,211,178,255));rect(340,170,1.8f,10,4,C(181,211,178,255));}
-        draw_captain(205,157);
+        /* The fish basket is a real, visible prop; its contents match the inventory. */
+        rect(292,170,1.8f,34,17,C(112,76,48,255));
+        rect(295,173,1.9f,28,3,C(183,137,83,255));
+        for(int i=0;i<g.fish && i<3;i++){
+            circle(301+i*9,168,2.0f,4,C(166,193,174,255));
+            rect(298+i*9,167,2.0f,7,2,C(166,193,174,255));
+            circle(303+i*9,167,2.1f,1,C(24,42,47,255));
+        }
+        draw_captain(playerX,playerY);
         
     }else if(g.room==ROOM_KITCHEN){
         rect(0,0,0.8f,TOP_W,240,C(32,47,55,255));
@@ -319,7 +364,7 @@ static void draw_room_scene(void){
         circle(95,62,1.5f,6,C(255,191,98,255));
         circle(111,62,1.5f,6,C(255,191,98,255));
         
-        draw_captain(185,160);
+        draw_captain(playerX,playerY);
         
     }else if(g.room==ROOM_ROOF){
         rect(0,0,0.8f,TOP_W,240,C(16,51,65,255));
@@ -339,7 +384,7 @@ static void draw_room_scene(void){
             }
         }
         
-        draw_captain(206,165);
+        draw_captain(playerX,playerY);
         
     }else{
         rect(0,0,0.8f,TOP_W,240,C(27,35,48,255));
@@ -355,9 +400,13 @@ static void draw_room_scene(void){
         circle(329,62,1.6f,5,C(255,204,120,255));
         for(int i=0;i<7;i++){float tw=1.0f+(float)((frameNo/12+i*3)%3);circle(35+i*51,42+(i%3)*19,1.7f,tw,C(220,230,204,180));}
         
-        draw_captain(183,166);
+        draw_captain(playerX,playerY);
         
     }
+    /* A small pulsing marker makes the room's usable object easy to spot. */
+    float pulse=2.0f+sinf(frameNo*0.10f)*1.0f;
+    circle(targetX,targetY-18,2.7f,pulse+3.0f,C(255,207,119,65));
+    circle(targetX,targetY-18,2.8f,pulse,C(255,218,147,220));
 }
 static void draw_top(void){
     C2D_TargetClear(topTarget,C(5,13,24,255));
@@ -418,9 +467,11 @@ static void draw_top(void){
                 for(int i=0;i<5;i++)circle(150+i*24,91+(i%2)*17,2.4f,2,C(229,232,196,230));
             }
         }
-        const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?"A  ESSEN":(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
+        const char *action = g.room==ROOM_DECK?"A  ANGELN":(g.room==ROOM_KITCHEN?(g.fish>0?"A  FISCH BRATEN":"A  ESSEN"):(g.room==ROOM_ROOF?"A  GARTEN":"A  SCHLAFEN"));
         panel(142,207,116,24);
         text(153,213,0.42f,C(191,239,195,255),action);
+        panel(88,178,224,20);
+        text(97,184,0.36f,C(235,226,198,255),"PFEILE LAUFEN   A BENUTZEN   B TRINKEN");
     }else if(screen==SCREEN_EVENT){
         draw_room_scene();
         panel(25,45,350,148);
@@ -455,6 +506,7 @@ static void draw_bottom(void){
         text(34,39,0.66f,C(255,232,187,255),"WILLKOMMEN AN BORD");
         text(34,79,0.5f,C(207,220,214,255),"Ein Boot. Ein endloses Meer.");
         text(34,101,0.5f,C(207,220,214,255),"Und Naechte voller Geheimnisse.");
+        text(34,125,0.39f,C(168,202,199,255),"IM SPIEL: PFEILE LAUFEN / A BENUTZEN / B TRINKEN");
         button(48,151,224,34,"NEUES SPIEL",true);
         text(60,198,0.42f,C(160,184,188,255),"TOUCH ODER A ZUM STARTEN");
     }else if(screen==SCREEN_DIFFICULTY){
@@ -478,9 +530,10 @@ static void draw_bottom(void){
         statbar(18,63,"DURST",g.thirst,C(88,178,214,255));
         statbar(18,83,"KRAFT",g.energy,C(155,151,218,255));
         statbar(18,103,"GESUNDHEIT",g.health,C(101,190,132,255));
-        text(18,128,0.48f,C(255,224,176,255),"VORRAETE");
-        snprintf(b,sizeof(b),"Fisch %d  Essen %d  Wasser %d",g.fish,g.meals,g.water);text(18,147,0.43f,C(218,226,219,255),b);
+        text(18,128,0.48f,C(255,224,176,255),"VORRAETE / FISCHKORB");
+        snprintf(b,sizeof(b),"Fisch im Korb: %d  Essen %d  Wasser %d",g.fish,g.meals,g.water);text(18,147,0.39f,C(218,226,219,255),b);
         snprintf(b,sizeof(b),"Samen %d  Ernte %d  Regen %d",g.seeds,g.crops,g.rain);text(18,164,0.43f,C(218,226,219,255),b);
+        text(18,183,0.37f,C(173,205,202,255),"PFEILE = LAUFEN  |  A = GEGENSTAND  |  B = TRINKEN");
         small_room_button(8,"DECK",g.room==ROOM_DECK);
         small_room_button(86,"KUECHE",g.room==ROOM_KITCHEN);
         small_room_button(164,"GARTEN",g.room==ROOM_ROOF);
@@ -500,9 +553,47 @@ static void draw_bottom(void){
     /* Citro2D has no C2D_SceneEnd; the frame is flushed by C3D_FrameEnd. */
 }
 static bool touch_in(touchPosition t,int x,int y,int w,int h){return t.px>=x&&t.px<x+w&&t.py>=y&&t.py<y+h;}
+static void start_ambient_audio(void){
+    if(R_FAILED(ndspInit()))return;
+    const int sampleRate=22050;
+    const int sampleCount=sampleRate;
+    ambientSamples=(s16*)linearAlloc(sampleCount*sizeof(s16));
+    if(!ambientSamples){ndspExit();return;}
+    const float tau=6.28318530718f;
+    for(int i=0;i<sampleCount;i++){
+        float t=(float)i/(float)sampleRate;
+        float swell=0.55f+0.45f*sinf(tau*0.22f*t);
+        float sea=0.0f;
+        for(int k=0;k<24;k++){
+            float frequency=37.0f+(float)k*13.0f;
+            float phase=(float)((k*37)%97)*0.0647f;
+            sea+=sinf(tau*frequency*t+phase)*0.020f;
+        }
+        float hush=sinf(tau*2.0f*t)*0.025f+sinf(tau*3.0f*t)*0.018f;
+        float sample=(sea*swell+hush)*0.65f;
+        if(sample>1.0f)sample=1.0f;if(sample< -1.0f)sample= -1.0f;
+        ambientSamples[i]=(s16)(sample*32767.0f);
+    }
+    memset(&ambientWave,0,sizeof(ambientWave));
+    ambientWave.data_vaddr=ambientSamples;
+    ambientWave.nsamples=sampleCount;
+    ambientWave.looping=true;
+    float mix[12]={0.55f,0.55f,0,0,0,0,0,0,0,0,0,0};
+    ndspChnReset(0);
+    ndspChnSetRate(0,(float)sampleRate);
+    ndspChnSetFormat(0,NDSP_FORMAT_MONO_PCM16);
+    ndspChnSetMix(0,mix);
+    ndspChnWaveBufAdd(0,&ambientWave);
+    audioReady=true;
+}
+static void stop_ambient_audio(void){
+    if(audioReady){ndspChnWaveBufClear(0);ndspExit();audioReady=false;}
+    if(ambientSamples){linearFree(ambientSamples);ambientSamples=NULL;}
+}
 int main(int argc,char **argv){
     (void)argc;(void)argv;
     gfxInitDefault();
+    start_ambient_audio();
     C3D_Init(C3D_DEFAULT_CMDBUF_SIZE);
     C2D_Init(12000);
     C2D_Prepare();
@@ -514,6 +605,7 @@ int main(int argc,char **argv){
     while(aptMainLoop()){
         hidScanInput();
         u32 down=hidKeysDown();
+        u32 held=hidKeysHeld();
         touchPosition touch;hidTouchRead(&touch);
         bool tapped=(down&KEY_TOUCH)!=0;
         if(screen==SCREEN_TITLE){
@@ -542,8 +634,7 @@ int main(int argc,char **argv){
             if(down&KEY_A)begin_game();
             if(down&KEY_B)screen=SCREEN_DIFFICULTY;
         }else if(screen==SCREEN_GAME){
-            if(down&KEY_LEFT)change_room(-1);
-            if(down&KEY_RIGHT)change_room(1);
+            move_player(held|down);
             if(down&KEY_A)interact();
             if(down&KEY_B)do_drink();
             if(tapped){
@@ -552,7 +643,7 @@ int main(int argc,char **argv){
                 else if(touch_in(touch,164,200,72,27))enter_room(ROOM_ROOF);
                 else if(touch_in(touch,242,200,72,27))enter_room(ROOM_BEDROOM);
             }
-            if(down&KEY_X){if(g.room==ROOM_BEDROOM)do_sleep();else say("Zum Schlafen ins Schlafzimmer gehen.");}
+            if(down&KEY_X){if(g.room==ROOM_BEDROOM && near_room_target())do_sleep();else if(g.room==ROOM_BEDROOM)say("GEH ZUM BETT, UM ZU SCHLAFEN.");else say("WECHSLE ZUM SCHLAFZIMMER UND GEH ZUM BETT.");}
             if((frameNo%180)==0)update_stats();
         }else if(screen==SCREEN_EVENT){
             if((down&KEY_A)||tapped)resolve_event();
@@ -567,6 +658,6 @@ int main(int argc,char **argv){
         draw_top();draw_bottom();
         C3D_FrameEnd(0);
     }
-    C2D_Fini();C3D_Fini();gfxExit();
+    C2D_Fini();C3D_Fini();stop_ambient_audio();gfxExit();
     return 0;
 }
