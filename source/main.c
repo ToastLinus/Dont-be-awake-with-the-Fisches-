@@ -114,6 +114,31 @@ static void horizon_ship(void){
  R(0,111,4,39,C(104,77,55,255));R(396,111,4,39,C(104,77,55,255));
  R(0,119,400,3,C(175,137,93,255));
 }
+static void draw_item_icon(int item,float x,float y,float s){
+    /* Large, distinct silhouettes so the pickup is recognizable in the world. */
+    if(item==0){
+        O(x+10*s,y+12*s,8*s,C(203,72,55,255));
+        O(x+17*s,y+12*s,7*s,C(220,91,61,255));
+        R(x+12*s,y+1*s,3*s,7*s,C(91,126,66,255));
+        R(x+15*s,y+2*s,7*s,3*s,C(104,153,81,255));
+    }else if(item==1){
+        R(x+8*s,y+6*s,13*s,21*s,C(82,164,198,255));
+        R(x+11*s,y+1*s,7*s,7*s,C(82,164,198,255));
+        R(x+10*s,y-2*s,9*s,4*s,C(226,191,104,255));
+        R(x+10*s,y+15*s,9*s,3*s,C(186,225,229,255));
+    }else if(item==2){
+        O(x+14*s,y+14*s,10*s,C(189,145,83,255));
+        O(x+14*s,y+14*s,5*s,C(35,57,60,255));
+        R(x+19*s,y+5*s,8*s,4*s,C(189,145,83,255));
+        R(x+24*s,y+5*s,4*s,9*s,C(189,145,83,255));
+    }else{
+        O(x+14*s,y+14*s,11*s,C(197,177,119,255));
+        O(x+14*s,y+14*s,7*s,C(45,77,86,255));
+        R(x+13*s,y+4*s,2*s,10*s,C(245,224,164,255));
+        R(x+14*s,y+13*s,9*s,2*s,C(245,224,164,255));
+        O(x+14*s,y+14*s,2*s,C(230,106,82,255));
+    }
+}
 static void draw_ship_view(void){
  horizon_ship();
  if(area==0){
@@ -140,7 +165,12 @@ static void draw_ship_view(void){
  R(0,0,400,8,C(0,0,0,55));R(0,232,400,8,C(0,0,0,55));
  if(phase==SHIP){
     int found=item_here(area);
-    if(found>=0){R(304,154,34,22,C(119,78,45,255));R(308,150,26,7,C(174,128,76,255));text(300,139,.36f,C(255,231,188,255),item_name(found));}
+    if(found>=0){
+      panel(258,137,132,62);
+      draw_item_icon(found,270,151,1.15f);
+      text(299,148,.43f,C(255,239,213,255),item_name(found));
+      text(299,170,.36f,C(160,226,180,255),"A AUFHEBEN");
+    }
   }
   R(196,116,8,2,C(241,231,207,210));R(199,113,2,8,C(241,231,207,210));
 }
