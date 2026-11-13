@@ -75,7 +75,30 @@ static void text(float x,float y,float s,u32 color,const char *str){
 static void say(const char *s){snprintf(message,sizeof(message),"%s",s);messageFrames=150;}
 static void panel(float x,float y,float w,float h){R(x+2,y+3,w,h,C(0,0,0,120));R(x,y,w,h,C(9,23,34,242));R(x+2,y+2,w-4,2,C(106,171,174,255));}
 static void button(float x,float y,float w,const char *s,bool active){R(x,y,w,27,active?C(45,110,119,255):C(27,52,64,255));text(x+8,y+8,0.48f,C(250,240,217,255),s);}
-static void sky(bool night){R(0,0,W,240,night?C(7,17,35,255):C(49,112,142,255));R(0,0,W,95,night?C(11,26,50,255):C(112,171,188,255));O(326,night?44:36,night?13:19,night?C(211,220,213,255):C(255,218,151,255));R(0,102,W,138,night?C(5,37,53,255):C(20,91,111,255));for(int i=0;i<18;i++){float x=fmodf(i*53+frame*(0.35f+i%3*.12f),430)-15;R(x,108+(i%6)*21,25+i%3*12,2,C(97,161,169,180));}}
+static void sky(bool night){
+    bool deepNight=night;
+    bool dawn=!night&&phase==BOAT&&(hour>=5&&hour<8);
+    bool dusk=!night&&phase==BOAT&&(hour>=17&&hour<20);
+    u32 upper=deepNight?C(8,18,39,255):dawn?C(194,112,91,255):dusk?C(185,105,92,255):C(74,139,164,255);
+    u32 lower=deepNight?C(15,35,58,255):dawn?C(245,174,117,255):dusk?C(238,157,105,255):C(157,204,202,255);
+    u32 sea=deepNight?C(5,37,53,255):C(20,91,111,255);
+    R(0,0,W,240,sea);R(0,0,W,102,upper);R(0,62,W,40,lower);
+    if(deepNight){
+        for(int i=0;i<34;i++){float twinkle=(sinf(frame*.08f+i*2.1f)+1.0f)*.5f;O((i*71+23)%395+2,(i*37+11)%77+5,1.0f+twinkle*1.2f,C(235,231,205,210));}
+        O(326,37,14,C(225,225,207,255));O(332,32,13,C(8,18,39,255));
+    }else{
+        O(dawn||dusk?310:326,dawn||dusk?52:36,dawn||dusk?17:19,C(255,218,151,255));
+        /* slow clouds drifting across the horizon */
+        for(int i=0;i<3;i++){float x=fmodf(i*157+frame*(.12f+i*.025f),470)-45;R(x,35+i*13,44,3,C(226,216,192,95));R(x+9,31+i*13,23,3,C(226,216,192,75));}
+    }
+    R(0,102,W,138,sea);
+    for(int i=0;i<22;i++){
+        float x=fmodf(i*53+frame*(0.35f+i%3*.12f),430)-15;
+        float y=109+(i%7)*18+sinf(frame*.035f+i)*2.0f;
+        R(x,y,25+i%3*12,2,C(97,161,169,180));
+        if(i%3==0)R(x+8,y+4,9,1,C(157,205,204,125));
+    }
+}
 static void horizon_ship(void){
  sky(false);
  /* distant silhouette of the enormous ship */
@@ -126,10 +149,13 @@ static void draw_boat_view(void){
  R(0,188+drift,400,52,C(93,60,39,255));R(0,181+drift,400,8,C(147,99,60,255));
  R(0,172+drift,74,68,C(117,77,47,255));R(326,172+drift,74,68,C(117,77,47,255));
  R(12,176+drift,376,4,C(193,147,94,255));
- R(195+drift,33,5,151,C(112,87,62,255));R(199+drift,41,2,112,C(195,165,118,255));
- /* sail */
- R(204+drift,43,96,82,C(218,211,182,255));R(207+drift,48,86,70,C(185,192,176,255));
- for(int i=0;i<4;i++)R(212+i*20,52,1,59,C(143,151,140,255));
+ float mastLean=sinf(sway*.72f)*3.0f;
+ R(195+drift,33,5,151,C(112,87,62,255));R(199+drift+mastLean,41,2,112,C(195,165,118,255));
+ /* sail follows the wind with a gentle animated lean */
+ R(204+drift+mastLean,43,96,82,C(218,211,182,255));R(207+drift+mastLean,48,86,70,C(185,192,176,255));
+ for(int i=0;i<4;i++)R(212+i*20+mastLean,52,1,59,C(143,151,140,255));
+ /* small animated spray at the bow */
+ for(int i=0;i<5;i++){float sx=fmodf(frame*(.8f+i*.12f)+i*83,420)-10;float sy=169+sinf(frame*.09f+i)*4;R(sx,sy,5,2,C(177,218,214,190));}
  /* clearly visible first-person fishing rod, line and bobber */
  R(301,153,4,48,C(105,69,43,255));R(292,153,12,3,C(185,148,102,255));
  R(278,124,2,37,C(211,198,167,220));
