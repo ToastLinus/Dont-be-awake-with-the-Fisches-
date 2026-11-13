@@ -50,5 +50,6 @@ GitHub Actions builds the 3DSX and installable CIA with devkitPro. A successful 
 - Sleeping is blocked while energy remains; it becomes available when all three meters are empty or the day reaches its limit.
 - A new day starts after the night event resolves and restores the three energy reserves.
 - The X button is used to talk with the selected shipmate.
+- Supply locations are randomized for each new run; the bottom screen shows whether an item is still in its area, being carried, or already stored.
 
 These energy categories and time values are a 3DS gameplay adaptation. They are not claimed to reproduce the PC game's exact numerical balance. The official game description confirms the broader loop of spending daytime energy on fishing, tasks and talking, then ending the day and sleeping.
