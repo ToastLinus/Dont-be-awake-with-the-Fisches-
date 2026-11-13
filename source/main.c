@@ -305,10 +305,10 @@ int main(int argc,char **argv){
  srand((unsigned)osGetTime());
  while(aptMainLoop()){
   hidScanInput();u32 down=hidKeysDown();u32 held=hidKeysHeld();touchPosition t;hidTouchRead(&t);bool touched=(down&KEY_TOUCH)!=0;
-  if(phase==SHIP && (frame%60)==0 && salvageSeconds>0){salvageSeconds--;if(salvageSeconds<=0){phase=CREW;say("Die Evakuierung endet! Waehle deinen Kameraden.");}}
+  if(phase==SHIP && (frame%60)==0 && salvageSeconds>0){salvageSeconds--;if(salvageSeconds<=0){carriedItem=-1;if(area==0){phase=CREW;say("Die Zeit ist um! Du hast das Rettungsboot erreicht.");}else{phase=ENDING;say("Du hast das Rettungsboot nicht rechtzeitig erreicht.");}}}
   if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
   else if(phase==SHIP){
-   if(down&KEY_X && area==0){phase=CREW;say("Waehle einen Kameraden fuer die Reise.");}
+   if(down&KEY_X && area==0){if(carriedItem>=0)say("Lege den Gegenstand erst im Rettungsboot ab!");else{phase=CREW;say("Waehle einen Kameraden fuer die Reise.");}}
    if(down&KEY_LEFT)area=(area+2)%3;
    if(down&KEY_RIGHT)area=(area+1)%3;
    if(down&KEY_UP)area=2;
