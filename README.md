@@ -18,7 +18,8 @@ The 60-second timer and simplified three-area layout are adaptations for this 3D
 - Four selectable boat areas: outside deck, kitchen, upper deck, and bedroom.
 - Hunger, thirst, three separate energy indicators, hull integrity, food, water, fish, and bait.
 - Fishing, eating, rain collection, planting, and sleeping.
-- Random night encounters with simple choices, including storms that can damage the hull.\n- Row can secure the boat during storms and repair hull damage with the salvaged rope.
+- Random night encounters with simple choices, including storms that can damage the hull.
+- Row can secure the boat during storms and repair hull damage with the salvaged rope.
 
 ## Controls
 
