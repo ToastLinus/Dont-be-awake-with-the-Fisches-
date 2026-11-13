@@ -13,9 +13,9 @@
 typedef enum { INTRO, SHIP, CREW, BOAT, NIGHT, ENDING } Phase;
 static Phase phase=INTRO;
 static C3D_RenderTarget *top,*bottom;
-static int frame=0, area=0, facing=0, food=0, water=0, rope=0, fish=0, day=1, hunger=100, thirst=100, caught=0;
+static int frame=0, area=0, facing=0, food=0, water=0, rope=0, fish=0, day=1, hunger=100, thirst=100, caught=0, hull=100;
 static int energy[3]={100,100,100};
-static int menuChoice=0, crewChoice=0, salvageSeconds=90, carriedItem=-1;
+static int menuChoice=0, crewChoice=0, salvageSeconds=60, carriedItem=-1;
 static bool menuHelp=false;
 static int hour=8, room=0, bait=3, plants=0, plantDays=0, lastFishHour=-1, nightEvent=0, nightKind=0, nightChoice=0, weather=0;
 static bool gotFood=false,gotWater=false,gotRope=false,gotCompass=false, transferred=false, sleptToday=false, rainCollected=false;
@@ -250,7 +250,7 @@ static void draw_top(void){
    sky(true);horizon_ship();panel(24,34,352,172);text(75,55,.78f,C(255,230,185,255),"WAHLE EINEN KAMERADEN");text(50,91,.52f,C(225,231,217,255),crewChoice==0?"> FREDERIK - ANGELN":"  FREDERIK - ANGELN");text(50,119,.52f,C(225,231,217,255),crewChoice==1?"> ROW - REPARATUR":"  ROW - REPARATUR");text(50,147,.52f,C(225,231,217,255),crewChoice==2?"> LAUREL - HEILUNG":"  LAUREL - HEILUNG");text(75,183,.43f,C(255,230,185,255),"A: AUSWAEHLEN");
  }else if(phase==BOAT){
    draw_boat_view();panel(9,8,382,53);
-   char s[80];snprintf(s,sizeof(s),"TAG %d  %02d:00   HUNGER %d  DURST %d",day,hour,hunger,thirst);
+   char s[96];snprintf(s,sizeof(s),"TAG %d  %02d:00   HUNGER %d  DURST %d  RUMPF %d%%",day,hour,hunger,thirst,hull);
    text(18,15,.46f,C(255,239,213,255),s);
    for(int i=0;i<3;i++){int x=20+i*124;text(x,34,.36f,C(255,232,205,255),i==0?"ANGELN":i==1?"ARBEIT":"KAMERAD");R(x,45,100,7,C(39,55,62,255));R(x,45,energy[i],7,energy[i]>40?C(102,190,147,255):C(211,105,91,255));}
    if(messageFrames>0){panel(35,72,330,31);text(47,83,.48f,C(255,240,212,255),message);}
@@ -347,14 +347,14 @@ static void interact_ship(void){
  }
  say(area==0?"Hier liegt nichts mehr. Das Rettungsboot ist bereit.":"In diesem Bereich findest du gerade nichts.");
 }
-static void start_survival(void){food=gotFood?3:0;water=gotWater?3:0;rope=gotRope?1:0;day=1;hour=8;hunger=100;thirst=100;energy[0]=energy[1]=energy[2]=100;lastFishHour=-1;sleptToday=false;room=0;phase=BOAT;say("Die Evakuierung ist geschafft. Ueberlebe auf See!");}
+static void start_survival(void){food=gotFood?3:0;water=gotWater?3:0;rope=gotRope?1:0;day=1;hour=8;hunger=100;thirst=100;hull=100;energy[0]=energy[1]=energy[2]=100;lastFishHour=-1;sleptToday=false;room=0;phase=BOAT;say("Die Evakuierung ist geschafft. Ueberlebe auf See!");}
 static bool energy_empty(void){return energy[0]<=0 && energy[1]<=0 && energy[2]<=0;}
 static void tick_boat(void){
  hour+=2;
  if(hour>24)hour=24;
  hunger=clamp(hunger-2,0,100);
  thirst=clamp(thirst-3,0,100);
- if(hunger<=0||thirst<=0)phase=ENDING;
+ if(hunger<=0||thirst<=0||hull<=0)phase=ENDING;
 }
 static void do_sleep(void){
  if(sleptToday){say("Du hast heute schon geschlafen.");return;}
@@ -376,7 +376,7 @@ int main(int argc,char **argv){
  while(aptMainLoop()){
   hidScanInput();u32 down=hidKeysDown();u32 held=hidKeysHeld();touchPosition t;hidTouchRead(&t);bool touched=(down&KEY_TOUCH)!=0;
   if(phase==SHIP && (frame%60)==0 && salvageSeconds>0){salvageSeconds--;if(salvageSeconds<=0){carriedItem=-1;if(area==0){phase=CREW;say("Die Zeit ist um! Du hast das Rettungsboot erreicht.");}else{phase=ENDING;say("Du hast das Rettungsboot nicht rechtzeitig erreicht.");}}}
-  if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;reset_salvage();say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;reset_salvage();say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
+  if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;salvageSeconds=60;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;reset_salvage();say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;salvageSeconds=60;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;reset_salvage();say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
   else if(phase==SHIP){
    if(down&KEY_X && area==0){if(carriedItem>=0)say("Lege den Gegenstand erst im Rettungsboot ab!");else{phase=CREW;say("Waehle einen Kameraden fuer die Reise.");}}
    if(down&KEY_LEFT)area=(area+2)%3;
@@ -406,6 +406,7 @@ int main(int argc,char **argv){
      }else if(room==2){
        if(energy[1]<25)say("Deine Arbeits-Energie ist aufgebraucht.");
        else if(weather==1&&!rainCollected){energy[1]=clamp(energy[1]-25,0,100);water=clamp(water+2,0,8);rainCollected=true;say("Regen! Du sammelst zwei Portionen Wasser.");tick_boat();}
+       else if(hull<100&&rope>0){energy[1]=clamp(energy[1]-(crewChoice==1?15:25),0,100);rope--;hull=clamp(hull+(crewChoice==1?65:40),0,100);say(crewChoice==1?"Row repariert den Rumpf mit dem Seil. Das Boot ist wieder stabil!":"Du reparierst den Rumpf mit dem Seil.");tick_boat();}
        else if(!rainCollected){energy[1]=clamp(energy[1]-15,0,100);rainCollected=true;say("Es regnet nicht. Du stellst einen Topf fuer Regen auf.");tick_boat();}
        else if(plants<2&&food>0){energy[1]=clamp(energy[1]-25,0,100);food--;plants++;plantDays=0;say("Du pflanzt etwas an. Pflege es ueber mehrere Tage.");tick_boat();}
        else say("Hier gibt es gerade nichts zu tun.");
@@ -452,18 +453,18 @@ int main(int argc,char **argv){
        day++;hour=8;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);
         energy[0]=energy[1]=energy[2]=100;
         if(plants>0){plantDays++;if(plantDays>=2){food++;plants--;plantDays=0;say("Deine Pflanze ist gewachsen. Du hast Essen!");}}
-        rainCollected=false;weather=rand()%3;phase=BOAT;
+        rainCollected=false;weather=rand()%3;phase=(hull<=0||hunger<=0||thirst<=0)?ENDING:BOAT;
      }
    }else if((down&KEY_A)||touched){
-     if(nightKind==2){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
+     if(nightKind==2){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);if(crewChoice==1&&rope>0){rope--;hull=clamp(hull-5,0,100);say("Row sichert das Boot mit dem Seil. Der Rumpf haelt dem Sturm stand!");}else{hull=clamp(hull-30,0,100);say("STURM! Der Rumpf wird beschaedigt und Wasser geht verloren.");}}
      else say("Eine ruhige Nacht. Du bist ausgeruht.");
      day++;hour=8;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);
         energy[0]=energy[1]=energy[2]=100;
         if(plants>0){plantDays++;if(plantDays>=2){food++;plants--;plantDays=0;say("Deine Pflanze ist gewachsen. Du hast Essen!");}}
-        rainCollected=false;weather=rand()%3;phase=BOAT;
+        rainCollected=false;weather=rand()%3;phase=(hull<=0||hunger<=0||thirst<=0)?ENDING:BOAT;
    }
   }
-  else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;carriedItem=-1;salvageSeconds=90;crewChoice=0;day=1;hunger=thirst=100;energy[0]=energy[1]=energy[2]=100;menuChoice=0;menuHelp=false;}}
+  else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;carriedItem=-1;salvageSeconds=60;crewChoice=0;day=1;hunger=thirst=100;hull=100;energy[0]=energy[1]=energy[2]=100;menuChoice=0;menuHelp=false;}}
   if(messageFrames>0)messageFrames--;if(fishAnim>0)fishAnim--;sway+=.04f;frame++;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);draw_top();draw_bottom();C3D_FrameEnd(0);
  }
