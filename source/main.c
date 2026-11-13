@@ -334,9 +334,13 @@ int main(int argc,char **argv){
    }
   }else if(phase==NIGHT){
    if(nightKind<2){
+     bool tapYes=touched&&tap(t,22,127,132,27);
+     bool tapNo=touched&&tap(t,162,127,132,27);
      if(down&KEY_LEFT)nightChoice=0;
      if(down&KEY_RIGHT)nightChoice=1;
-     if(down&KEY_A){
+     if(tapYes)nightChoice=0;
+     if(tapNo)nightChoice=1;
+     if((down&KEY_A)||tapYes||tapNo){
        if(nightKind==0){
          if(nightChoice==0){
            if(rand()%100<72){fish++;say("Du siehst einen grossen Fisch! Er landet im Vorrat.");}
@@ -344,27 +348,25 @@ int main(int argc,char **argv){
          }else say("Du drehst dich um und bleibst liegen.");
        }else{
          if(nightChoice==0){
-           if(rand()%100<68){int reward=rand()%3;if(reward==0){food+=2;say("In der Truhe liegen zwei Portionen Essen!");}else if(reward==1){water=clamp(water+2,0,8);say("Du findest zwei Flaschen Trinkwasser!");}else{bait+=2;say("Du findest neue Angelkoeder in der Truhe!");}}
-           else{water=clamp(water-1,0,8);energy[1]=clamp(energy[1]-15,0,100);say("Die Truhe ist schwer. Beim Bergen geht Wasser verloren.");}
+           if(rand()%100<68){
+             int reward=rand()%3;
+             if(reward==0){food+=2;say("In der Truhe liegen zwei Portionen Essen!");}
+             else if(reward==1){water=clamp(water+2,0,8);say("Du findest zwei Flaschen Trinkwasser!");}
+             else{bait+=2;say("Du findest neue Angelkoeder in der Truhe!");}
+           }else{water=clamp(water-1,0,8);energy[1]=clamp(energy[1]-15,0,100);say("Die Truhe ist schwer. Beim Bergen geht Wasser verloren.");}
          }else say("Du laesst die Truhe vorbeiziehen.");
        }
-     }
-     if(touched){
-       if(tap(t,22,127,132,27))nightChoice=0;
-       else if(tap(t,162,127,132,27))nightChoice=1;
+       day++;hour=6;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);
+       for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
+       rainCollected=false;weather=rand()%3;phase=BOAT;
      }
    }else if((down&KEY_A)||touched){
      if(nightKind==2){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
      else say("Eine ruhige Nacht. Du bist ausgeruht.");
-     nightKind=3;
-     day++;hour=6;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
+     day++;hour=6;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);
+     for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
      rainCollected=false;weather=rand()%3;phase=BOAT;
    }
-   if(nightKind<2 && (down&KEY_A) && phase==NIGHT){
-     day++;hour=6;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
-     rainCollected=false;weather=rand()%3;phase=BOAT;
-   }
- }
   else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;day=1;hunger=thirst=100;energy[0]=energy[1]=energy[2]=100;menuChoice=0;menuHelp=false;}}
   if(messageFrames>0)messageFrames--;if(fishAnim>0)fishAnim--;sway+=.04f;frame++;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);draw_top();draw_bottom();C3D_FrameEnd(0);
