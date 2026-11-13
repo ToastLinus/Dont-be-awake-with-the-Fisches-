@@ -188,7 +188,7 @@ static void draw_top(void){
    if(area==0){R(286,121,42,26,C(119,79,46,255));R(291,116,31,8,C(175,128,75,255));}
    if(area==1){R(135,112,40,48,C(45,77,85,255));}
    if(area==2){R(151,91,30,23,C(112,169,170,255));}
-   panel(92,207,216,24);text(106,214,.43f,C(255,236,205,255),"PFEILE: UMSCHAUEN / GEHEN   A: NEHMEN");
+   panel(92,207,216,24);text(106,214,.43f,C(255,236,205,255),"PFEILE: GEHEN  A: AUFNEHMEN / EINLADEN");
  }else if(phase==CREW){
    sky(true);horizon_ship();panel(24,34,352,172);text(75,55,.78f,C(255,230,185,255),"WAHLE EINEN KAMERADEN");text(50,91,.52f,C(225,231,217,255),crewChoice==0?"> FREDERIK - ANGELN":"  FREDERIK - ANGELN");text(50,119,.52f,C(225,231,217,255),crewChoice==1?"> ROW - REPARATUR":"  ROW - REPARATUR");text(50,147,.52f,C(225,231,217,255),crewChoice==2?"> LAUREL - HEILUNG":"  LAUREL - HEILUNG");text(75,183,.43f,C(255,230,185,255),"A: AUSWAEHLEN");
  }else if(phase==BOAT){
@@ -236,8 +236,8 @@ static void draw_bottom(void){
    text(20,121,.48f,gotRope?C(135,221,155,255):C(255,221,177,255),gotRope?"[X] SEIL":"[ ] SEIL");
    text(20,144,.48f,gotCompass?C(135,221,155,255):C(255,221,177,255),gotCompass?"[X] KOMPASS":"[ ] KOMPASS");
    text(20,176,.43f,C(185,213,207,255),"ORT WECHSELN: LINKS / RECHTS");
-   text(20,197,.43f,C(185,213,207,255),"A: GEGENSTAND NEHMEN");
-   text(20,216,.39f,C(255,232,187,255),"BUG = KLEINES SEGELBOOT");
+   text(20,197,.43f,C(185,213,207,255),carriedItem>=0?"TRAEGT EINEN GEGENSTAND":"A: AUFNEHMEN / EINLADEN");
+   text(20,216,.39f,C(255,232,187,255),"X: EVAKUIEREN (AM BOOT)");
  }else if(phase==CREW){panel(8,8,304,224);text(20,17,.59f,C(255,232,187,255),"KAMERAD AUSWAEHLEN");button(22,61,272,"FREDERIK - ANGELN",crewChoice==0);button(22,101,272,"ROW - REPARATUR",crewChoice==1);button(22,141,272,"LAUREL - HEILUNG",crewChoice==2);text(22,192,.42f,C(185,213,207,255),"LINKS / RECHTS: WAEHLEN  A: BESTAETIGEN");}
  else if(phase==BOAT){
    panel(8,8,304,224);text(20,17,.59f,C(255,232,187,255),"DEIN SEGELBOOT");
@@ -290,7 +290,7 @@ static void interact_ship(void){
    else say("Hier ist nichts mehr zu holen.");
  }
 }
-static void start_survival(void){food=gotFood?3:0;water=gotWater?3:0;rope=gotRope?1:0;day=1;hour=8;hunger=100;thirst=100;phase=BOAT;say("Die Evakuierung ist geschafft. Ueberlebe auf See!");}
+static void start_survival(void){food=gotFood?3:0;water=gotWater?3:0;rope=gotRope?1:0;day=1;hour=8;hunger=100;thirst=100;energy[0]=energy[1]=energy[2]=100;phase=BOAT;say("Die Evakuierung ist geschafft. Ueberlebe auf See!");}
 static void tick_boat(void){
  hour++;
  hunger=clamp(hunger-3,0,100);
@@ -306,7 +306,7 @@ int main(int argc,char **argv){
  while(aptMainLoop()){
   hidScanInput();u32 down=hidKeysDown();u32 held=hidKeysHeld();touchPosition t;hidTouchRead(&t);bool touched=(down&KEY_TOUCH)!=0;
   if(phase==SHIP && (frame%60)==0 && salvageSeconds>0){salvageSeconds--;if(salvageSeconds<=0){phase=CREW;say("Die Evakuierung endet! Waehle deinen Kameraden.");}}
-  if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;say("Erkunde das grosse Schiff. Sammle vier wichtige Dinge.");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;say("Erkunde das grosse Schiff. Sammle vier wichtige Dinge.");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
+  if(phase==INTRO){if(down&KEY_UP)menuChoice=(menuChoice+2)%3;if(down&KEY_DOWN)menuChoice=(menuChoice+1)%3;if(down&KEY_B)menuHelp=false;if(down&KEY_A){if(menuHelp)menuHelp=false;else if(menuChoice==0){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(menuChoice==1)menuHelp=true;else say("Ein Abenteuer auf See. Viel Glueck!");}if(touched){if(tap(t,38,65,244,27)){phase=SHIP;area=0;salvageSeconds=90;carriedItem=-1;gotFood=gotWater=gotRope=gotCompass=false;food=water=rope=0;crewChoice=0;say("Sammle Vorrraete und bringe sie zum Rettungsboot!");}else if(tap(t,38,105,244,27))menuHelp=true;else if(tap(t,38,145,244,27))say("Fish Night - Nintendo 3DS");else if(menuHelp&&tap(t,38,178,244,27))menuHelp=false;}}
   else if(phase==SHIP){
    if(down&KEY_X && area==0){phase=CREW;say("Waehle einen Kameraden fuer die Reise.");}
    if(down&KEY_LEFT)area=(area+2)%3;
