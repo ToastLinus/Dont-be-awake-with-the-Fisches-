@@ -367,6 +367,7 @@ int main(int argc,char **argv){
      for(int i=0;i<3;i++)energy[i]=clamp(energy[i]+30,0,100);
      rainCollected=false;weather=rand()%3;phase=BOAT;
    }
+  }
   else if(phase==ENDING){if((down&KEY_A)||touched){phase=INTRO;area=0;food=water=rope=fish=0;gotFood=gotWater=gotRope=gotCompass=transferred=false;day=1;hunger=thirst=100;energy[0]=energy[1]=energy[2]=100;menuChoice=0;menuHelp=false;}}
   if(messageFrames>0)messageFrames--;if(fishAnim>0)fishAnim--;sway+=.04f;frame++;
   C3D_FrameBegin(C3D_FRAME_SYNCDRAW);draw_top();draw_bottom();C3D_FrameEnd(0);
