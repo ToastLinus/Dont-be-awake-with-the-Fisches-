@@ -4,21 +4,21 @@ A Nintendo 3DS survival-horror adaptation inspired by the gameplay structure of 
 
 ## Current rebuild milestone
 
-1. **Evacuation phase:** a 90-second 3DS-friendly countdown starts on the damaged ship.
+1. **Evacuation phase:** a 60-second 3DS-friendly countdown starts on the damaged ship.
 2. Search the ship's three areas for supplies.
 3. Carry one item at a time back to the lifeboat and store it there.
 4. Evacuate before the countdown ends, or leave early from the lifeboat area.
 5. Choose one of three companions: Frederik, Row, or Laurel.
 6. Begin the day-by-day survival section with the supplies that were actually stored.
 
-The 90-second timer and simplified three-area layout are adaptations for this 3DS prototype, not a claim that every detail matches the PC game's exact timing or level layout.
+The 60-second timer and simplified three-area layout are adaptations for this 3DS prototype, not a claim that every detail matches the PC game's exact timing or level layout.
 
 ## Current survival prototype
 
 - Four selectable boat areas: outside deck, kitchen, upper deck, and bedroom.
-- Hunger, thirst, three separate energy indicators, food, water, fish, and bait.
+- Hunger, thirst, three separate energy indicators, hull integrity, food, water, fish, and bait.
 - Fishing, eating, rain collection, planting, and sleeping.
-- Random night encounters with simple choices.
+- Random night encounters with simple choices, including storms that can damage the hull.\n- Row can secure the boat during storms and repair hull damage with the salvaged rope.
 
 ## Controls
 
