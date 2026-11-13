@@ -425,7 +425,10 @@ int main(int argc,char **argv){
         rainCollected=false;weather=rand()%3;phase=BOAT;
      }
    }else if((down&KEY_A)||touched){
-     if(nightKind==2){water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
+     if(nightKind==2){
+       if(crewChoice==1){energy[0]=clamp(energy[0]-10,0,100);energy[1]=clamp(energy[1]-10,0,100);say("Row sichert das Boot. Der Sturm kostet dich weniger Energie und kein Wasser.");}
+       else{water=clamp(water-1,0,8);energy[0]=clamp(energy[0]-20,0,100);energy[1]=clamp(energy[1]-20,0,100);say("STURM! Wasser ging verloren und du bist erschoepft.");}
+     }
      else say("Eine ruhige Nacht. Du bist ausgeruht.");
      day++;hour=8;sleptToday=false;hunger=clamp(hunger-10,0,100);thirst=clamp(thirst-12,0,100);
         energy[0]=energy[1]=energy[2]=100;

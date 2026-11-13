@@ -53,3 +53,5 @@ GitHub Actions builds the 3DSX and installable CIA with devkitPro. A successful 
 - Supply locations are randomized for each new run; the bottom screen shows whether an item is still in its area, being carried, or already stored.
 
 These energy categories and time values are a 3DS gameplay adaptation. They are not claimed to reproduce the PC game's exact numerical balance. The official game description confirms the broader loop of spending daytime energy on fishing, tasks and talking, then ending the day and sleeping.
+
+- Shipmate traits in this 3DS adaptation: Frederik can save bait while fishing; Laurel improves food recovery; Row helps secure the boat during storms, reducing their penalties. These are game-balance adaptations and are not presented as exact PC-game numerical values.
