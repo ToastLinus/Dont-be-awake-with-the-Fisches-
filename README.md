@@ -18,6 +18,9 @@ The 60-second timer and simplified three-area layout are adaptations for this 3D
 - Four selectable boat areas: outside deck, kitchen, upper deck, and bedroom.
 - Hunger, thirst, three separate energy indicators, hull integrity, food, water, fish, and bait.
 - Fishing, eating, rain collection, planting, and sleeping.
+- Fishing is possible without bait, but the chance is low and unsuccessful casts can bring up junk; bait makes fish much more likely.
+- The boat can be turned with L/R, and the chosen shipmate is visibly seated on the left side.
+- The upper deck has a visible repair toolbox. Hull repairs use one, two, or three work-energy steps depending on damage; Row improves the repair.
 - Random night encounters with simple choices, including storms that can damage the hull.
 - Row can secure the boat during storms and repair hull damage with the salvaged rope.
 
@@ -39,6 +42,7 @@ The 60-second timer and simplified three-area layout are adaptations for this 3D
 - **Left / Right:** switch areas.
 - **A:** perform the selected area's action.
 - **B:** drink stored water.
+- **L / R:** turn the boat left or right.
 
 ## Build and testing
 
