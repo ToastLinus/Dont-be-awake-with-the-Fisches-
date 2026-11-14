@@ -23,7 +23,7 @@ static int itemArea[4]={0,1,2,2};
 static bool itemTaken[4]={false,false,false,false};
 static bool itemStored[4]={false,false,false,false};
 static char message[100]="";
-static int messageFrames=0, fishAnim=0;
+static int messageFrames=0, fishAnim=0, junk=0, boatFacing=0;
 static float sway=0;
 static bool energy_empty(void);
 static u32 C(int r,int g,int b,int a){return C2D_Color32(r,g,b,a);}
@@ -177,12 +177,15 @@ static void draw_ship_view(void){
 static void draw_boat_view(void){
  sky(hour<6||hour>=19);
  /* compact dinghy: visible bow, gunwales and one mast from the player's eyes */
- float drift=sinf(sway)*2.2f;
+ float drift=sinf(sway)*2.2f + (boatFacing==1?5.0f:boatFacing==3?-5.0f:0.0f);
  R(0,150,400,90,C(10,55,70,255));
  for(int i=0;i<14;i++){float x=fmodf(i*41+frame*(.5f+i%3*.12f),420)-10;R(x,154+(i%5)*15,27,2,C(86,149,157,180));}
  R(0,188+drift,400,52,C(93,60,39,255));R(0,181+drift,400,8,C(147,99,60,255));
  R(0,172+drift,74,68,C(117,77,47,255));R(326,172+drift,74,68,C(117,77,47,255));
  R(12,176+drift,376,4,C(193,147,94,255));
+ /* Shipmate sits on the port side and moves gently with the boat. */
+ O(76,153+drift,10,C(205,169,132,255));R(67,163+drift,19,25,C(43,77,91,255));R(63,185+drift,14,5,C(36,48,56,255));R(77,185+drift,14,5,C(36,48,56,255));
+ R(65,147+drift,23,3,C(108,76,52,255));
  R(195+drift,33,5,151,C(112,87,62,255));R(199+drift,41,2,112,C(195,165,118,255));
  /* sail */
  R(204+drift,43,96,82,C(218,211,182,255));R(207+drift,48,86,70,C(185,192,176,255));
@@ -214,8 +217,10 @@ static void draw_boat_view(void){
    R(0,145,400,95,C(91,60,42,255));for(int i=0;i<8;i++)R(0,150+i*12,400,2,C(143,101,67,255));
    R(15,82,74,76,C(109,76,49,255));R(21,76,62,10,C(165,121,73,255));
    R(282,111,82,39,C(76,105,60,255));R(291,101,64,16,C(101,142,73,255));
+   /* Repair toolbox on the starboard side of the upper deck. */
+   R(300,143,53,28,C(117,75,43,255));R(296,138,61,8,C(174,126,70,255));R(319,145,12,3,C(214,190,137,255));
    O(308,94,14,C(68,126,67,255));O(330,88,13,C(76,137,73,255));O(351,96,15,C(58,113,62,255));
-   text(112,53,.58f,C(255,231,187,255),"OBERDECK");
+   text(112,53,.58f,C(255,231,187,255),"OBERDECK");text(282,181,.34f,C(255,231,187,255),"WERKZEUGKISTE");
  }else if(room==3){
    R(0,0,400,240,C(43,35,40,255));R(0,0,400,18,C(24,29,35,255));
    R(32,40,336,150,C(88,61,54,255));R(44,53,312,122,C(112,80,68,255));
@@ -256,7 +261,7 @@ static void draw_top(void){
    if(messageFrames>0){panel(35,72,330,31);text(47,83,.48f,C(255,240,212,255),message);}
    panel(7,174,298,53);
    button(8,177,72,"DECK",room==0);button(82,177,72,"KUECHE",room==1);button(156,177,72,"OBERDECK",room==2);button(230,177,72,"BETT",room==3);
-   text(16,216,.37f,C(255,236,205,255),"A: AKTION  X: REDEN  B: TRINKEN");
+   text(16,216,.37f,C(255,236,205,255),"A: AKTION  X: REDEN  B: TRINKEN  L/R: DREHEN");
  }else if(phase==NIGHT){
    draw_boat_view();panel(25,46,350,145);
    text(73,67,.78f,C(255,227,181,255),"DIE NACHT AUF SEE");
@@ -298,7 +303,7 @@ static void draw_bottom(void){
  }else if(phase==CREW){panel(8,8,304,224);text(20,17,.59f,C(255,232,187,255),"KAMERAD AUSWAEHLEN");button(22,61,272,"FREDERIK - ANGELN",crewChoice==0);button(22,101,272,"ROW - REPARATUR",crewChoice==1);button(22,141,272,"LAUREL - HEILUNG",crewChoice==2);text(22,192,.42f,C(185,213,207,255),"LINKS / RECHTS: WAEHLEN  A: BESTAETIGEN");}
  else if(phase==BOAT){
    panel(8,8,304,224);text(20,17,.59f,C(255,232,187,255),"DEIN SEGELBOOT");
-   char b[80];snprintf(b,sizeof(b),"ESSEN:%d WASSER:%d FISCHE:%d KOEDER:%d",food,water,fish,bait);text(20,43,.40f,C(225,231,217,255),b);
+   char b[80];snprintf(b,sizeof(b),"ESSEN:%d WASSER:%d FISCHE:%d KOEDER:%d",food,water,fish,bait);text(20,43,.40f,C(225,231,217,255),b);{char j[32];snprintf(j,sizeof(j),"MUELL:%d  KURS:%s",junk,boatFacing==0?"VORNE":boatFacing==1?"RECHTS":boatFacing==2?"HINTEN":"LINKS");text(20,56,.38f,C(177,211,206,255),j);}
    text(20,69,.46f,C(255,221,177,255),room==0?"AUSSENDECK - A: ANGELN":room==1?"KUECHE - A: ESSEN / KOCHEN":room==2?"OBERDECK - A: REGENWASSER / PFLANZEN":(energy_empty()||hour>=24?"SCHLAFZIMMER - A: SCHLAFEN":"SCHLAFZIMMER - ENERGIE VERBRAUCHEN"));
    text(20,101,.43f,C(185,213,207,255),"RAUM WAEHLEN: UNTEN ANTIPPEN");
    text(20,126,.43f,C(185,213,207,255),"LINKS / RECHTS: RAUM WECHSELN");
@@ -392,12 +397,13 @@ int main(int argc,char **argv){
   }else if(phase==BOAT){
    if(down&KEY_LEFT)room=(room+3)%4;
    if(down&KEY_RIGHT)room=(room+1)%4;
+   if(down&KEY_L){boatFacing=(boatFacing+3)%4;say("Du drehst dich nach links.");}
+   if(down&KEY_R){boatFacing=(boatFacing+1)%4;say("Du drehst dich nach rechts.");}
    if(down&KEY_A){
      if(room==0){
        if(energy[0]<35)say("Deine Angel-Energie ist aufgebraucht.");
        else if(lastFishHour==hour)say("Du hast in dieser Stunde schon geangelt.");
-       else if(bait<=0)say("Kein Koeder mehr. Du brauchst neue Vorräte.");
-       else{energy[0]=clamp(energy[0]-35,0,100);lastFishHour=hour;fishAnim=90;if(rand()%100<52){fish++;caught=1;if(crewChoice==0)say("Frederik hilft: Der Koeder bleibt erhalten!");else{bait--;say("Ein Fisch! Der Fang ist im Vorrat.");}}else{bait--;caught=0;say("Heute beisst nichts an.");}tick_boat();}
+       else{energy[0]=clamp(energy[0]-35,0,100);lastFishHour=hour;fishAnim=90;int chance=bait>0?78:12;int roll=rand()%100;if(roll<chance){fish++;caught=1;if(bait>0){bait--;say("Ein Fisch beisst an! Der Fang ist im Vorrat.");}else say("Ohne Koeder hast du trotzdem einen Fisch gefangen!");}else{caught=0;if(bait>0){bait--;say("Heute beisst nichts an. Der Koeder ist weg.");}else{junk++;say("Du ziehst nur alten Muell aus dem Meer.");}}tick_boat();}
      }else if(room==1){
        if(energy[1]<20)say("Deine Arbeits-Energie ist aufgebraucht.");
        else if(food>0&&hunger<90){energy[1]=clamp(energy[1]-20,0,100);food--;hunger=clamp(hunger+(crewChoice==2?60:38),0,100);say(crewChoice==2?"Laurel hilft dir beim Essen. Du erholst dich besser.":"Du isst eine Portion.");tick_boat();}
@@ -406,7 +412,7 @@ int main(int argc,char **argv){
      }else if(room==2){
        if(energy[1]<25)say("Deine Arbeits-Energie ist aufgebraucht.");
        else if(weather==1&&!rainCollected){energy[1]=clamp(energy[1]-25,0,100);water=clamp(water+2,0,8);rainCollected=true;say("Regen! Du sammelst zwei Portionen Wasser.");tick_boat();}
-       else if(hull<100&&rope>0){energy[1]=clamp(energy[1]-(crewChoice==1?15:25),0,100);rope--;hull=clamp(hull+(crewChoice==1?65:40),0,100);say(crewChoice==1?"Row repariert den Rumpf mit dem Seil. Das Boot ist wieder stabil!":"Du reparierst den Rumpf mit dem Seil.");tick_boat();}
+       else if(hull<100){int damage=100-hull;int cost=damage<=30?15:damage<=65?30:45;int restore=damage<=30?30:damage<=65?55:80;if(energy[1]<cost){say("Nicht genug Arbeits-Energie fuer diese Reparatur.");}else{energy[1]=clamp(energy[1]-cost,0,100);hull=clamp(hull+restore+(crewChoice==1?10:0),0,100);say(crewChoice==1?"Row repariert den Rumpf an der Werkzeugkiste.":"Du reparierst den Rumpf an der Werkzeugkiste.");tick_boat();}}
        else if(!rainCollected){energy[1]=clamp(energy[1]-15,0,100);rainCollected=true;say("Es regnet nicht. Du stellst einen Topf fuer Regen auf.");tick_boat();}
        else if(plants<2&&food>0){energy[1]=clamp(energy[1]-25,0,100);food--;plants++;plantDays=0;say("Du pflanzt etwas an. Pflege es ueber mehrere Tage.");tick_boat();}
        else say("Hier gibt es gerade nichts zu tun.");
